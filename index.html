@@ -4,6 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --ink:#1B1220; --ink-2:#271A2D; --ink-3:#33233B; --line:#4A3552;
@@ -20,13 +21,15 @@
   h1 em{font-style:italic;font-weight:400;color:var(--saffron)}
   .stats{font-family:var(--mono);font-size:12px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase;text-align:right;line-height:1.7}
   .stats b{color:var(--saffron)}
+  .who{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase}
+  .who img{width:22px;height:22px;border-radius:50%}
+  .who button{background:none;border:none;color:var(--paper-dim);padding:2px 4px;font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+  .who button:hover{color:var(--saffron);filter:none}
 
-  .entry{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
   input,select,textarea{font-family:var(--body);font-size:15px;color:var(--paper);background:var(--ink-2);
     border:1px solid var(--line);border-radius:10px;padding:12px 14px;outline:none}
   input:focus,select:focus,textarea:focus{border-color:var(--saffron);box-shadow:0 0 0 3px rgba(232,179,60,.18)}
   input::placeholder,textarea::placeholder{color:#7C6884}
-  .entry input{flex:1;min-width:200px;font-size:17px}
   button{font-family:var(--body);font-weight:600;font-size:14px;cursor:pointer;border-radius:10px;
     padding:12px 18px;border:1px solid transparent;background:var(--saffron);color:#231708;
     transition:transform .12s ease,filter .12s ease}
@@ -35,6 +38,9 @@
   button.ghost{background:transparent;border-color:var(--line);color:var(--paper)}
   button.ghost:hover{border-color:var(--saffron);filter:none}
   :focus-visible{outline:2px solid var(--saffron);outline-offset:2px}
+
+  .entry{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .entry input{flex:1;min-width:200px;font-size:17px}
   .gen{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border:1px dashed var(--line);border-radius:12px;padding:12px;margin-bottom:26px}
   .gen label{font-family:var(--mono);font-size:11px;color:var(--paper-dim);text-transform:uppercase;letter-spacing:.08em}
 
@@ -61,7 +67,6 @@
   .ex{font-size:12px;color:var(--paper-dim);line-height:1.4}
   .del{position:absolute;top:8px;right:10px;background:none;border:none;color:#7C6884;font-size:15px;padding:2px 6px;border-radius:6px}
   .del:hover{color:var(--rose);filter:none}
-  /* olgunluk şeridi: kartın altında ne kadar öğrenildiğini gösterir */
   .bar{position:absolute;left:7px;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06)}
   .bar i{display:block;height:100%;background:var(--mint)}
 
@@ -84,19 +89,36 @@
   .loading{font-family:var(--mono);font-size:12px;color:var(--saffron);letter-spacing:.08em}
   .err{color:var(--rose);font-size:13px;margin-top:10px}
 
-  /* tekrar ekranı */
   .study{text-align:center;border:1px solid var(--line);border-radius:16px;background:var(--ink-2);padding:40px 24px}
   .study .word{font-family:var(--display);font-size:clamp(38px,8vw,64px);font-weight:900;letter-spacing:-.03em;line-height:1}
   .study .answer{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
   .study .answer .tr{font-size:28px}
   .study .answer .ex{margin-top:10px;font-size:14px;line-height:1.5}
   .grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:22px}
-  .grades button{flex-direction:column;background:var(--ink-3);border:1px solid var(--line);color:var(--paper);padding:10px 6px}
+  .grades button{background:var(--ink-3);border:1px solid var(--line);color:var(--paper);padding:10px 6px}
   .grades button:hover{filter:none;border-color:currentColor}
   .grades button span{display:block;font-family:var(--mono);font-size:10px;color:var(--paper-dim);margin-top:3px;letter-spacing:.05em}
   .g0{color:var(--rose)!important} .g1{color:var(--saffron)!important} .g2{color:var(--mint)!important} .g3{color:var(--sky)!important}
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
   .save-state{font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase}
+
+  /* giriş sayfası */
+  .gate{max-width:380px;margin:6vh auto 0;text-align:center;display:flex;flex-direction:column;gap:14px}
+  .gate .lead{color:var(--paper-dim);line-height:1.6;margin:0 0 8px}
+  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--paper);color:#231708;font-size:15px;padding:13px 22px;width:100%}
+  .gbtn svg{width:18px;height:18px;flex:none}
+  .or{display:flex;align-items:center;gap:12px;color:var(--paper-dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+  .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+  .mail{display:flex;gap:8px}
+  .mail input{flex:1}
+  .guest{background:none;border:none;color:var(--paper-dim);font-weight:400;font-size:13px;text-decoration:underline;text-underline-offset:3px}
+  .guest:hover{color:var(--paper);filter:none}
+  .note{font-size:12px;color:var(--paper-dim);line-height:1.5;margin:0}
+  .sent{border:1px solid var(--mint);color:var(--mint);border-radius:10px;padding:14px;font-size:14px;line-height:1.5}
+  .guest-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+    border:1px solid var(--line);border-left:3px solid var(--saffron);border-radius:0 10px 10px 0;
+    padding:10px 14px;margin-bottom:18px;font-size:13px;color:var(--paper-dim)}
+  .guest-bar button{padding:8px 14px;font-size:13px}
   @media (max-width:520px){.grades{grid-template-columns:repeat(2,1fr)}}
   @media (prefers-reduced-motion:reduce){.inner{transition:none}}
 </style>
@@ -104,69 +126,152 @@
 <div class="wrap">
   <header>
     <h1>Kelime <em>Defteri</em></h1>
-    <div class="stats" id="stats"></div>
+    <div>
+      <div class="stats" id="stats"></div>
+      <div class="who" id="who"></div>
+    </div>
   </header>
 
-  <div class="entry">
-    <input id="wordInput" placeholder="Bir kelime yaz ve Enter'a bas — örn. resilient" autocomplete="off">
-    <button id="addBtn">Karta çevir</button>
+  <!-- giriş sayfası -->
+  <div id="gate" class="gate" hidden>
+    <p class="lead">Girdiğin her kelime karta dönüşür, aralıklı tekrarla tam unutacağın gün karşına çıkar.</p>
+
+    <button class="gbtn" id="googleBtn">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h6c-.3 1.4-1.1 2.6-2.3 3.4v2.8h3.7c2.2-2 3.4-5 3.4-8.1z"/><path fill="#34A853" d="M12 23c3.1 0 5.7-1 7.6-2.8l-3.7-2.8c-1 .7-2.3 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.8v2.9C3.7 20.5 7.6 23 12 23z"/><path fill="#FBBC05" d="M5.6 13.8c-.2-.7-.4-1.4-.4-2.3s.1-1.6.4-2.3V6.3H1.8C1 7.9.5 9.7.5 11.5s.5 3.6 1.3 5.2l3.8-2.9z"/><path fill="#EA4335" d="M12 4.5c1.7 0 3.2.6 4.4 1.7l3.3-3.3C17.7 1 15.1 0 12 0 7.6 0 3.7 2.5 1.8 6.3l3.8 2.9C6.5 6.5 9 4.5 12 4.5z"/></svg>
+      Google ile giriş yap
+    </button>
+
+    <div class="or">veya</div>
+
+    <div class="mail">
+      <input id="mailInput" type="email" placeholder="mail adresin" autocomplete="email">
+      <button class="ghost" id="mailBtn">Link gönder</button>
+    </div>
+    <p class="note">Şifre yok — mailine tek kullanımlık bir giriş linki gelir.</p>
+    <div id="mailMsg"></div>
+
+    <div class="or">ya da</div>
+    <button class="guest" id="guestBtn">Giriş yapmadan dene</button>
+    <p class="note">Misafir destesi sadece bu tarayıcıda durur. Sonra giriş yaparsan hesabına aktarabilirsin.</p>
   </div>
 
-  <div class="gen">
-    <label for="level">Seviye</label>
-    <select id="level"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
-    <label for="topic">Konu</label>
-    <input id="topic" placeholder="serbest (örn. iş hayatı)" style="width:180px">
-    <label for="howmany">Adet</label>
-    <select id="howmany"><option>5</option><option selected>8</option><option>12</option></select>
-    <button class="ghost" id="genBtn">En sık kullanılanları getir</button>
+  <!-- uygulama -->
+  <div id="app" hidden>
+    <div id="guestBar" class="guest-bar" hidden>
+      <span>Misafir modundasın — desten sadece bu tarayıcıda duruyor.</span>
+      <button id="toLoginBtn">Giriş yap</button>
+    </div>
+
+    <div class="entry">
+      <input id="wordInput" placeholder="Bir kelime yaz ve Enter'a bas — örn. resilient" autocomplete="off">
+      <button id="addBtn">Karta çevir</button>
+    </div>
+
+    <div class="gen">
+      <label for="level">Seviye</label>
+      <select id="level"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
+      <label for="topic">Konu</label>
+      <input id="topic" placeholder="serbest (örn. iş hayatı)" style="width:180px">
+      <label for="howmany">Adet</label>
+      <select id="howmany"><option>5</option><option selected>8</option><option>12</option></select>
+      <button class="ghost" id="genBtn">En sık kullanılanları getir</button>
+    </div>
+
+    <nav role="tablist">
+      <button role="tab" aria-selected="true" data-tab="study">Tekrar<span class="badge" id="dueBadge" hidden></span></button>
+      <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
+      <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
+      <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
+    </nav>
+
+    <section id="study"></section>
+    <section id="deck" hidden></section>
+    <section id="quiz" hidden></section>
+    <section id="write" hidden></section>
   </div>
-
-  <nav role="tablist">
-    <button role="tab" aria-selected="true" data-tab="study">Tekrar<span class="badge" id="dueBadge" hidden></span></button>
-    <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
-    <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
-    <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
-  </nav>
-
-  <section id="study"></section>
-  <section id="deck" hidden></section>
-  <section id="quiz" hidden></section>
-  <section id="write" hidden></section>
 </div>
 
 <script>
-const KEY = "kelime-defteri:deck";
+/* ============ AYARLAR — Supabase → Settings → API Keys ============ */
+const SUPABASE_URL  = "BURAYA_PROJECT_URL";   // https://xxxx.supabase.co
+const SUPABASE_ANON = "BURAYA_ANON_KEY";      // sb_publishable_... ya da eyJ...
+/* ================================================================== */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
 const DAY = 86400000;
+const LANG = "en";
+const LOCAL_KEY = "kelime-defteri:misafir";
 const POS = {isim:"var(--sky)",fiil:"var(--mint)","sıfat":"var(--saffron)",zarf:"var(--violet)",
   edat:"var(--rose)","bağlaç":"var(--rose)","ünlem":"var(--rose)","kalıp":"var(--paper-dim)"};
 const posColor = p => POS[p] || "var(--paper-dim)";
 const $ = s => document.querySelector(s);
 
-let deck = [];
+let deck = [], user = null, guest = false;
 
-/* ---------- kalıcı kayıt ---------- */
-async function save(){
-  $("#saveState") && ($("#saveState").textContent = "kaydediliyor…");
-  try{ await window.storage.set(KEY, JSON.stringify(deck)); }
-  catch(e){ console.error("Kayıt başarısız:", e); }
-}
-async function load(){
-  try{
-    const r = await window.storage.get(KEY);
-    deck = r ? JSON.parse(r.value) : [];
-  }catch(e){ deck = []; }   // kayıt yoksa hata fırlatır — boş defterle başla
-}
+/* ---------- satır <-> kart ---------- */
+const fromRow = r => ({
+  id:r.id, word:r.word, tr:r.tr, pos:r.pos, level:r.level, artikel:r.artikel,
+  example:r.example, exampleTr:r.example_tr, lang:r.lang,
+  reps:r.reps, ease:r.ease, interval:r.interval, due:new Date(r.due).getTime(), lapses:r.lapses
+});
+const toRow = c => ({
+  word:c.word, tr:c.tr, pos:c.pos, level:c.level, artikel:c.artikel || null,
+  example:c.example, example_tr:c.exampleTr, lang:c.lang || LANG,
+  reps:c.reps, ease:c.ease, interval:c.interval, due:new Date(c.due).toISOString(), lapses:c.lapses
+});
+
+/* ---------- depolama: misafir tarayıcıda, üye bulutta ---------- */
+const local = {
+  read(){ try{ return JSON.parse(localStorage.getItem(LOCAL_KEY)) || []; }catch{ return []; } },
+  write(d){ try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(d)); }catch(e){ console.error(e); } }
+};
+
+const store = {
+  async load(){
+    if(guest) return local.read();
+    const { data, error } = await sb.from("cards").select("*").eq("lang", LANG).order("due");
+    if(error){ console.error(error); return []; }
+    return data.map(fromRow);
+  },
+  async insert(c){
+    if(guest){ c.id = crypto.randomUUID(); const d = local.read(); d.unshift(c); local.write(d); return c; }
+    const { data, error } = await sb.from("cards").insert(toRow(c)).select().single();
+    if(error) throw new Error(error.message);
+    return fromRow(data);
+  },
+  async insertMany(cards){
+    if(guest){
+      cards.forEach(c => c.id = crypto.randomUUID());
+      local.write(cards.concat(local.read()));
+      return cards;
+    }
+    const { data, error } = await sb.from("cards").insert(cards.map(toRow)).select();
+    if(error) throw new Error(error.message);
+    return data.map(fromRow);
+  },
+  async update(c){
+    if(guest){ local.write(deck); return; }
+    const { error } = await sb.from("cards")
+      .update({ reps:c.reps, ease:c.ease, interval:c.interval, due:new Date(c.due).toISOString(), lapses:c.lapses })
+      .eq("id", c.id);
+    if(error) console.error(error);
+  },
+  async remove(id){
+    if(guest){ local.write(deck); return; }
+    const { error } = await sb.from("cards").delete().eq("id", id);
+    if(error) console.error(error);
+  }
+};
 
 /* ---------- aralıklı tekrar (SM-2 uyarlaması) ---------- */
 function freshCard(w){
-  return Object.assign({reps:0, ease:2.5, interval:0, due:Date.now(), lapses:0}, w);
+  return Object.assign({reps:0, ease:2.5, interval:0, due:Date.now(), lapses:0, lang:LANG}, w);
 }
-// grade: 0 bilmiyorum · 1 zor · 2 iyi · 3 kolay
 function schedule(c, grade){
   if(grade === 0){
     c.reps = 0; c.lapses++; c.ease = Math.max(1.3, c.ease - 0.2);
-    c.interval = 0; c.due = Date.now() + 60000;         // 1 dk sonra tekrar karşına gelir
+    c.interval = 0; c.due = Date.now() + 60000;
     return c;
   }
   if(grade === 1){ c.ease = Math.max(1.3, c.ease - 0.15); c.interval = c.reps ? Math.max(1, c.interval * 1.2) : 1; }
@@ -178,7 +283,7 @@ function schedule(c, grade){
   return c;
 }
 const dueCards = () => deck.filter(c => c.due <= Date.now());
-const maturity = c => Math.min(1, (c.interval || 0) / 21);   // 21 gün = olgun kabul
+const maturity = c => Math.min(1, (c.interval || 0) / 21);
 function dueLabel(c){
   const d = c.due - Date.now();
   if(d <= 0) return "şimdi";
@@ -186,11 +291,10 @@ function dueLabel(c){
   return Math.round(d/DAY) + " gün";
 }
 
-/* ---------- Claude API ---------- */
+/* ---------- yapay zeka ---------- */
 async function ask(prompt){
   const res = await fetch("/api/ask", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
+    method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ prompt })
   });
   const data = await res.json();
@@ -205,6 +309,17 @@ function renderStats(){
   $("#stats").innerHTML = `<b>${deck.length}</b> kelime · <b>${mature}</b> öğrenildi<br>bugün tekrar: <b>${due}</b>`;
   const b = $("#dueBadge");
   b.hidden = !due; b.textContent = due;
+}
+function renderWho(){
+  const el = $("#who");
+  if(user){
+    const pic = user.user_metadata?.avatar_url;
+    el.innerHTML = `${pic ? `<img src="${pic}" alt="">` : ""}<button id="outBtn">çıkış</button>`;
+    $("#outBtn").onclick = () => sb.auth.signOut();
+  }else if(guest){
+    el.innerHTML = `misafir <button id="inBtn">giriş yap</button>`;
+    $("#inBtn").onclick = showGate;
+  }else el.innerHTML = "";
 }
 
 /* ---------- tekrar ekranı ---------- */
@@ -223,10 +338,10 @@ function renderStudy(){
   }
   current = queue.sort((a,b) => a.due - b.due)[0];
   el.innerHTML = `
-    <div class="toolbar"><div class="save-state" id="saveState">${queue.length} kart sırada</div></div>
+    <div class="toolbar"><div class="save-state">${queue.length} kart sırada</div></div>
     <div class="study">
       <div class="meta" style="--pos:${posColor(current.pos)};margin-bottom:12px">${current.pos} · ${current.level||""}</div>
-      <div class="word" style="color:${posColor(current.pos)}">${current.word}</div>
+      <div class="word" style="color:${posColor(current.pos)}">${current.artikel ? current.artikel + " " : ""}${current.word}</div>
       ${revealed ? `
         <div class="answer">
           <div class="tr">${current.tr}</div>
@@ -247,13 +362,14 @@ function peek(g){
   const copy = schedule(Object.assign({}, current), g);
   return copy.interval < 1 ? "<1 gün" : copy.interval + " gün";
 }
-async function grade(g){
+function grade(g){
   schedule(current, g);
   revealed = false;
-  await save(); renderStats(); renderStudy();
+  renderStats(); renderStudy();
+  store.update(current);
 }
 document.addEventListener("keydown", e => {
-  if($("#study").hidden || !current) return;
+  if($("#app").hidden || $("#study").hidden || !current) return;
   if(e.target.matches("input,textarea")) return;
   if(!revealed && (e.key === " " || e.key === "Enter")){ e.preventDefault(); revealed = true; renderStudy(); }
   else if(revealed && ["1","2","3","4"].includes(e.key)) grade(+e.key - 1);
@@ -266,12 +382,12 @@ function renderDeck(){
     el.innerHTML = `<div class="empty"><b>Defter boş</b>İlk kelimeni ekleyince kartlar burada birikir.</div>`;
     return;
   }
-  el.innerHTML = `<div class="deck">` + deck.map((w,i) => `
-    <div class="card" data-i="${i}" tabindex="0" role="button" aria-label="${w.word} kartını çevir">
+  el.innerHTML = `<div class="deck">` + deck.map(w => `
+    <div class="card" tabindex="0" role="button" aria-label="${w.word} kartını çevir">
       <div class="inner">
         <div class="face" style="--pos:${posColor(w.pos)}">
-          <button class="del" data-del="${i}" aria-label="Sil">×</button>
-          <div class="term">${w.word}</div>
+          <button class="del" data-del="${w.id}" aria-label="Sil">×</button>
+          <div class="term">${w.artikel ? w.artikel + " " : ""}${w.word}</div>
           <div>
             <div class="meta">${w.pos} · ${w.level||""}</div>
             <div class="due ${w.due <= Date.now() ? "now":""}">tekrar: ${dueLabel(w)}</div>
@@ -287,7 +403,13 @@ function renderDeck(){
 }
 $("#deck").addEventListener("click", async e => {
   const del = e.target.closest("[data-del]");
-  if(del){ deck.splice(+del.dataset.del,1); await save(); renderDeck(); renderStats(); return; }
+  if(del){
+    const id = del.dataset.del;
+    deck = deck.filter(c => c.id !== id);
+    renderDeck(); renderStats();
+    await store.remove(id);
+    return;
+  }
   const card = e.target.closest(".card");
   if(card) card.classList.toggle("flipped");
 });
@@ -309,9 +431,9 @@ async function addWord(){
     const w = await ask(`"${word}" kelimesi için bir dil öğrenme kartı hazırla.
 Sadece geçerli JSON döndür, başka hiçbir şey yazma:
 {"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`);
-    deck.unshift(freshCard(w));
+    deck.unshift(await store.insert(freshCard(w)));
     $("#wordInput").value = "";
-    await save(); renderDeck(); renderStats();
+    renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
   }catch(err){ alert("Kart oluşturulamadı: " + err.message); }
   $("#addBtn").disabled = false; $("#addBtn").textContent = "Karta çevir";
@@ -329,8 +451,8 @@ $("#genBtn").onclick = async () => {
 Şu kelimeleri tekrar etme: ${deck.map(d=>d.word).join(", ") || "yok"}.
 Sadece geçerli JSON dizisi döndür:
 [{"word":"","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","example":"","exampleTr":""}]`);
-    deck = out.map(freshCard).concat(deck);
-    await save(); renderDeck(); renderStats();
+    deck = (await store.insertMany(out.map(freshCard))).concat(deck);
+    renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
   }catch(err){ alert("Kelimeler getirilemedi: " + err.message); }
   btn.disabled = false; btn.textContent = "En sık kullanılanları getir";
@@ -355,7 +477,6 @@ async function buildQuiz(){
     return;
   }
   el.innerHTML = `<p class="loading">Sorular yazılıyor…</p>`;
-  // tekrarı yaklaşan kelimelere öncelik ver
   const focus = deck.slice().sort((a,b)=>a.due-b.due).slice(0,10).map(d=>d.word);
   try{
     const qs = await ask(`Şu kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
@@ -406,8 +527,8 @@ Cümleyi dilbilgisi, kelime kullanımı ve doğallık açısından değerlendir.
 Sadece geçerli JSON döndür:
 {"score":"0-10 arası sayı","corrected":"düzeltilmiş cümle (gerekmiyorsa aynısı)","feedback":"1-3 cümlelik Türkçe açıklama"}`);
     const good = Number(r.score) >= 7;
-    // doğru kullanım kartın tekrar aralığını da ilerletir
-    schedule(target, good ? 2 : 0); await save(); renderStats();
+    schedule(target, good ? 2 : 0);
+    store.update(target); renderStats();
     $("#fb").innerHTML = `
       <div class="feedback ${good ? "" : "bad"}">
         <div class="score">puan ${r.score}/10 · kart ${good ? "ilerletildi" : "tekrara alındı"}</div>
@@ -429,6 +550,64 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   if(b.dataset.tab === "write") newPrompt();
 });
 
-/* ---------- başlangıç ---------- */
-(async () => { await load(); renderStats(); renderStudy(); renderDeck(); })();
+/* ---------- giriş ---------- */
+function showGate(){
+  guest = false;
+  $("#gate").hidden = false; $("#app").hidden = true;
+  $("#stats").innerHTML = ""; renderWho();
+}
+async function showApp(){
+  $("#gate").hidden = true; $("#app").hidden = false;
+  $("#guestBar").hidden = !guest;
+  renderWho();
+  deck = await store.load();
+  revealed = false;
+  renderStats(); renderStudy(); renderDeck();
+}
+
+$("#googleBtn").onclick = () => sb.auth.signInWithOAuth({
+  provider: "google", options: { redirectTo: window.location.origin }
+});
+
+$("#mailBtn").onclick = async () => {
+  const email = $("#mailInput").value.trim();
+  if(!email) return;
+  const btn = $("#mailBtn");
+  btn.disabled = true; btn.textContent = "Gönderiliyor…";
+  const { error } = await sb.auth.signInWithOtp({
+    email, options: { emailRedirectTo: window.location.origin }
+  });
+  $("#mailMsg").innerHTML = error
+    ? `<p class="err">${error.message}</p>`
+    : `<div class="sent">Link gönderildi. Mailini aç ve linke tıkla — bu sekmeyi kapatabilirsin.</div>`;
+  btn.disabled = false; btn.textContent = "Link gönder";
+};
+$("#mailInput").addEventListener("keydown", e => { if(e.key === "Enter") $("#mailBtn").click(); });
+
+$("#guestBtn").onclick = () => { guest = true; showApp(); };
+$("#toLoginBtn").onclick = showGate;
+
+/* ---------- misafir destesini hesaba aktar ---------- */
+async function offerMigration(){
+  const mine = local.read();
+  if(!mine.length) return;
+  const ok = confirm(`Misafirken eklediğin ${mine.length} kelime var. Hesabına aktarılsın mı?\n\nHayır dersen bu kelimeler bu tarayıcıda kalmaya devam eder.`);
+  if(!ok) return;
+  const { error } = await sb.from("cards").insert(mine.map(toRow));
+  if(error){ alert("Aktarılamadı: " + error.message); return; }
+  localStorage.removeItem(LOCAL_KEY);
+}
+
+/* ---------- oturum ---------- */
+sb.auth.onAuthStateChange(async (event, session) => {
+  user = session?.user || null;
+  if(user){
+    guest = false;
+    if(event === "SIGNED_IN") await offerMigration();
+    await showApp();
+  }else{
+    deck = [];
+    if(!guest) showGate();
+  }
+});
 </script>
