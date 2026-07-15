@@ -188,14 +188,14 @@ function dueLabel(c){
 
 /* ---------- Claude API ---------- */
 async function ask(prompt){
-  const res = await fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({model:"claude-sonnet-4-6", max_tokens:1000, messages:[{role:"user",content:prompt}]})
+  const res = await fetch("/api/ask", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ prompt })
   });
-  if(!res.ok) throw new Error("İstek başarısız (" + res.status + ")");
   const data = await res.json();
-  const text = data.content.map(b => b.type === "text" ? b.text : "").join("");
-  return JSON.parse(text.replace(/```json|```/g,"").trim());
+  if(!res.ok) throw new Error(data.error || "İstek başarısız");
+  return JSON.parse(data.text.replace(/```json|```/g,"").trim());
 }
 
 /* ---------- üst bilgi ---------- */
