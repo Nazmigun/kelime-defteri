@@ -1,0 +1,434 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kelime Defteri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B1220; --ink-2:#271A2D; --ink-3:#33233B; --line:#4A3552;
+    --paper:#F4EDE3; --paper-dim:#C6B7C4;
+    --saffron:#E8B33C; --mint:#79D2A6; --rose:#E4728C; --sky:#7FB6E8; --violet:#B49AE8;
+    --display:'Fraunces',Georgia,serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#3A2440 0%,transparent 60%),var(--ink);
+    color:var(--paper);font-family:var(--body);min-height:100vh}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+  h1{font-family:var(--display);font-weight:900;font-size:clamp(34px,6vw,58px);line-height:.95;margin:0;letter-spacing:-.02em}
+  h1 em{font-style:italic;font-weight:400;color:var(--saffron)}
+  .stats{font-family:var(--mono);font-size:12px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase;text-align:right;line-height:1.7}
+  .stats b{color:var(--saffron)}
+
+  .entry{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  input,select,textarea{font-family:var(--body);font-size:15px;color:var(--paper);background:var(--ink-2);
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--saffron);box-shadow:0 0 0 3px rgba(232,179,60,.18)}
+  input::placeholder,textarea::placeholder{color:#7C6884}
+  .entry input{flex:1;min-width:200px;font-size:17px}
+  button{font-family:var(--body);font-weight:600;font-size:14px;cursor:pointer;border-radius:10px;
+    padding:12px 18px;border:1px solid transparent;background:var(--saffron);color:#231708;
+    transition:transform .12s ease,filter .12s ease}
+  button:hover{filter:brightness(1.08)} button:active{transform:translateY(1px)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent;border-color:var(--line);color:var(--paper)}
+  button.ghost:hover{border-color:var(--saffron);filter:none}
+  :focus-visible{outline:2px solid var(--saffron);outline-offset:2px}
+  .gen{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border:1px dashed var(--line);border-radius:12px;padding:12px;margin-bottom:26px}
+  .gen label{font-family:var(--mono);font-size:11px;color:var(--paper-dim);text-transform:uppercase;letter-spacing:.08em}
+
+  nav{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:24px;flex-wrap:wrap}
+  nav button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;color:var(--paper-dim);font-weight:500;padding:10px 16px}
+  nav button[aria-selected="true"]{color:var(--paper);border-bottom-color:var(--saffron)}
+  nav button:hover{filter:none;color:var(--paper)}
+  .badge{font-family:var(--mono);font-size:10px;background:var(--saffron);color:#231708;border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:600}
+
+  .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+  .card{perspective:900px;height:150px;cursor:pointer;background:none;border:none;padding:0;border-radius:0}
+  .inner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d}
+  .card.flipped .inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:12px;border:1px solid var(--line);
+    background:linear-gradient(180deg,var(--ink-3),var(--ink-2));padding:16px 16px 16px 22px;
+    display:flex;flex-direction:column;justify-content:space-between;text-align:left;overflow:hidden}
+  .face::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--pos,var(--saffron))}
+  .back{transform:rotateY(180deg);background:linear-gradient(180deg,#2E2036,#241830)}
+  .term{font-family:var(--display);font-size:26px;font-weight:600;line-height:1.05;letter-spacing:-.01em}
+  .tr{font-family:var(--display);font-size:22px;font-weight:600;color:var(--saffron);line-height:1.1}
+  .meta{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pos,var(--paper-dim))}
+  .due{font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.06em}
+  .due.now{color:var(--mint)}
+  .ex{font-size:12px;color:var(--paper-dim);line-height:1.4}
+  .del{position:absolute;top:8px;right:10px;background:none;border:none;color:#7C6884;font-size:15px;padding:2px 6px;border-radius:6px}
+  .del:hover{color:var(--rose);filter:none}
+  /* olgunluk şeridi: kartın altında ne kadar öğrenildiğini gösterir */
+  .bar{position:absolute;left:7px;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06)}
+  .bar i{display:block;height:100%;background:var(--mint)}
+
+  .empty{border:1px dashed var(--line);border-radius:12px;padding:36px;text-align:center;color:var(--paper-dim)}
+  .empty b{display:block;font-family:var(--display);font-size:20px;color:var(--paper);margin-bottom:6px;font-weight:600}
+
+  .q{border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px;background:var(--ink-2)}
+  .qtext{font-size:17px;line-height:1.6;margin-bottom:14px}
+  .qtext b{color:var(--saffron);font-family:var(--mono);letter-spacing:.05em}
+  .opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .opt{background:var(--ink-3);border:1px solid var(--line);color:var(--paper);font-weight:500;text-align:left}
+  .opt.right{background:rgba(121,210,166,.16);border-color:var(--mint);color:var(--mint)}
+  .opt.wrong{background:rgba(228,114,140,.14);border-color:var(--rose);color:var(--rose)}
+  .hint{font-size:13px;color:var(--paper-dim);margin-top:12px;font-style:italic}
+  textarea{width:100%;min-height:90px;resize:vertical;font-size:16px}
+  .prompt-word{font-family:var(--display);font-size:40px;font-weight:900;letter-spacing:-.02em;margin:0 0 4px}
+  .feedback{border-left:3px solid var(--mint);padding:12px 16px;background:rgba(121,210,166,.07);border-radius:0 10px 10px 0;margin-top:14px;line-height:1.6}
+  .feedback.bad{border-color:var(--rose);background:rgba(228,114,140,.07)}
+  .score{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-dim);margin-bottom:6px}
+  .loading{font-family:var(--mono);font-size:12px;color:var(--saffron);letter-spacing:.08em}
+  .err{color:var(--rose);font-size:13px;margin-top:10px}
+
+  /* tekrar ekranı */
+  .study{text-align:center;border:1px solid var(--line);border-radius:16px;background:var(--ink-2);padding:40px 24px}
+  .study .word{font-family:var(--display);font-size:clamp(38px,8vw,64px);font-weight:900;letter-spacing:-.03em;line-height:1}
+  .study .answer{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  .study .answer .tr{font-size:28px}
+  .study .answer .ex{margin-top:10px;font-size:14px;line-height:1.5}
+  .grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:22px}
+  .grades button{flex-direction:column;background:var(--ink-3);border:1px solid var(--line);color:var(--paper);padding:10px 6px}
+  .grades button:hover{filter:none;border-color:currentColor}
+  .grades button span{display:block;font-family:var(--mono);font-size:10px;color:var(--paper-dim);margin-top:3px;letter-spacing:.05em}
+  .g0{color:var(--rose)!important} .g1{color:var(--saffron)!important} .g2{color:var(--mint)!important} .g3{color:var(--sky)!important}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+  .save-state{font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase}
+  @media (max-width:520px){.grades{grid-template-columns:repeat(2,1fr)}}
+  @media (prefers-reduced-motion:reduce){.inner{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Kelime <em>Defteri</em></h1>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="entry">
+    <input id="wordInput" placeholder="Bir kelime yaz ve Enter'a bas — örn. resilient" autocomplete="off">
+    <button id="addBtn">Karta çevir</button>
+  </div>
+
+  <div class="gen">
+    <label for="level">Seviye</label>
+    <select id="level"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
+    <label for="topic">Konu</label>
+    <input id="topic" placeholder="serbest (örn. iş hayatı)" style="width:180px">
+    <label for="howmany">Adet</label>
+    <select id="howmany"><option>5</option><option selected>8</option><option>12</option></select>
+    <button class="ghost" id="genBtn">En sık kullanılanları getir</button>
+  </div>
+
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-tab="study">Tekrar<span class="badge" id="dueBadge" hidden></span></button>
+    <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
+    <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
+    <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
+  </nav>
+
+  <section id="study"></section>
+  <section id="deck" hidden></section>
+  <section id="quiz" hidden></section>
+  <section id="write" hidden></section>
+</div>
+
+<script>
+const KEY = "kelime-defteri:deck";
+const DAY = 86400000;
+const POS = {isim:"var(--sky)",fiil:"var(--mint)","sıfat":"var(--saffron)",zarf:"var(--violet)",
+  edat:"var(--rose)","bağlaç":"var(--rose)","ünlem":"var(--rose)","kalıp":"var(--paper-dim)"};
+const posColor = p => POS[p] || "var(--paper-dim)";
+const $ = s => document.querySelector(s);
+
+let deck = [];
+
+/* ---------- kalıcı kayıt ---------- */
+async function save(){
+  $("#saveState") && ($("#saveState").textContent = "kaydediliyor…");
+  try{ await window.storage.set(KEY, JSON.stringify(deck)); }
+  catch(e){ console.error("Kayıt başarısız:", e); }
+}
+async function load(){
+  try{
+    const r = await window.storage.get(KEY);
+    deck = r ? JSON.parse(r.value) : [];
+  }catch(e){ deck = []; }   // kayıt yoksa hata fırlatır — boş defterle başla
+}
+
+/* ---------- aralıklı tekrar (SM-2 uyarlaması) ---------- */
+function freshCard(w){
+  return Object.assign({reps:0, ease:2.5, interval:0, due:Date.now(), lapses:0}, w);
+}
+// grade: 0 bilmiyorum · 1 zor · 2 iyi · 3 kolay
+function schedule(c, grade){
+  if(grade === 0){
+    c.reps = 0; c.lapses++; c.ease = Math.max(1.3, c.ease - 0.2);
+    c.interval = 0; c.due = Date.now() + 60000;         // 1 dk sonra tekrar karşına gelir
+    return c;
+  }
+  if(grade === 1){ c.ease = Math.max(1.3, c.ease - 0.15); c.interval = c.reps ? Math.max(1, c.interval * 1.2) : 1; }
+  else if(grade === 2){ c.interval = c.reps === 0 ? 1 : c.reps === 1 ? 3 : c.interval * c.ease; }
+  else { c.ease = Math.min(3.0, c.ease + 0.15); c.interval = (c.reps === 0 ? 2 : c.interval * c.ease) * 1.3; }
+  c.reps++;
+  c.interval = Math.round(c.interval * 10) / 10;
+  c.due = Date.now() + c.interval * DAY;
+  return c;
+}
+const dueCards = () => deck.filter(c => c.due <= Date.now());
+const maturity = c => Math.min(1, (c.interval || 0) / 21);   // 21 gün = olgun kabul
+function dueLabel(c){
+  const d = c.due - Date.now();
+  if(d <= 0) return "şimdi";
+  if(d < DAY) return Math.max(1, Math.round(d/3600000)) + " sa";
+  return Math.round(d/DAY) + " gün";
+}
+
+/* ---------- Claude API ---------- */
+async function ask(prompt){
+  const res = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({model:"claude-sonnet-4-6", max_tokens:1000, messages:[{role:"user",content:prompt}]})
+  });
+  if(!res.ok) throw new Error("İstek başarısız (" + res.status + ")");
+  const data = await res.json();
+  const text = data.content.map(b => b.type === "text" ? b.text : "").join("");
+  return JSON.parse(text.replace(/```json|```/g,"").trim());
+}
+
+/* ---------- üst bilgi ---------- */
+function renderStats(){
+  const due = dueCards().length;
+  const mature = deck.filter(c => c.interval >= 21).length;
+  $("#stats").innerHTML = `<b>${deck.length}</b> kelime · <b>${mature}</b> öğrenildi<br>bugün tekrar: <b>${due}</b>`;
+  const b = $("#dueBadge");
+  b.hidden = !due; b.textContent = due;
+}
+
+/* ---------- tekrar ekranı ---------- */
+let current = null, revealed = false;
+function renderStudy(){
+  const el = $("#study");
+  const queue = dueCards();
+  if(!deck.length){
+    el.innerHTML = `<div class="empty"><b>Defter boş</b>Yukarıya bir kelime yaz ya da seviyene göre en sık kullanılan kelimeleri getir.</div>`;
+    return;
+  }
+  if(!queue.length){
+    const next = deck.slice().sort((a,b)=>a.due-b.due)[0];
+    el.innerHTML = `<div class="empty"><b>Bugünlük bitti</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${next.word}</strong></div>`;
+    return;
+  }
+  current = queue.sort((a,b) => a.due - b.due)[0];
+  el.innerHTML = `
+    <div class="toolbar"><div class="save-state" id="saveState">${queue.length} kart sırada</div></div>
+    <div class="study">
+      <div class="meta" style="--pos:${posColor(current.pos)};margin-bottom:12px">${current.pos} · ${current.level||""}</div>
+      <div class="word" style="color:${posColor(current.pos)}">${current.word}</div>
+      ${revealed ? `
+        <div class="answer">
+          <div class="tr">${current.tr}</div>
+          <div class="ex">${current.example||""}<br><span style="opacity:.6">${current.exampleTr||""}</span></div>
+        </div>
+        <div class="grades">
+          <button class="g0" data-g="0">Bilmiyorum<span>1 dk</span></button>
+          <button class="g1" data-g="1">Zor<span>${peek(1)}</span></button>
+          <button class="g2" data-g="2">İyi<span>${peek(2)}</span></button>
+          <button class="g3" data-g="3">Kolay<span>${peek(3)}</span></button>
+        </div>`
+      : `<div style="margin-top:26px"><button id="reveal">Cevabı göster</button></div>`}
+    </div>`;
+  if(!revealed) $("#reveal").onclick = () => { revealed = true; renderStudy(); };
+  el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => grade(+b.dataset.g));
+}
+function peek(g){
+  const copy = schedule(Object.assign({}, current), g);
+  return copy.interval < 1 ? "<1 gün" : copy.interval + " gün";
+}
+async function grade(g){
+  schedule(current, g);
+  revealed = false;
+  await save(); renderStats(); renderStudy();
+}
+document.addEventListener("keydown", e => {
+  if($("#study").hidden || !current) return;
+  if(e.target.matches("input,textarea")) return;
+  if(!revealed && (e.key === " " || e.key === "Enter")){ e.preventDefault(); revealed = true; renderStudy(); }
+  else if(revealed && ["1","2","3","4"].includes(e.key)) grade(+e.key - 1);
+});
+
+/* ---------- deste ---------- */
+function renderDeck(){
+  const el = $("#deck");
+  if(!deck.length){
+    el.innerHTML = `<div class="empty"><b>Defter boş</b>İlk kelimeni ekleyince kartlar burada birikir.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="deck">` + deck.map((w,i) => `
+    <div class="card" data-i="${i}" tabindex="0" role="button" aria-label="${w.word} kartını çevir">
+      <div class="inner">
+        <div class="face" style="--pos:${posColor(w.pos)}">
+          <button class="del" data-del="${i}" aria-label="Sil">×</button>
+          <div class="term">${w.word}</div>
+          <div>
+            <div class="meta">${w.pos} · ${w.level||""}</div>
+            <div class="due ${w.due <= Date.now() ? "now":""}">tekrar: ${dueLabel(w)}</div>
+          </div>
+          <div class="bar"><i style="width:${maturity(w)*100}%"></i></div>
+        </div>
+        <div class="face back" style="--pos:${posColor(w.pos)}">
+          <div class="tr">${w.tr}</div>
+          <div class="ex">${w.example||""}<br><span style="opacity:.6">${w.exampleTr||""}</span></div>
+        </div>
+      </div>
+    </div>`).join("") + `</div>`;
+}
+$("#deck").addEventListener("click", async e => {
+  const del = e.target.closest("[data-del]");
+  if(del){ deck.splice(+del.dataset.del,1); await save(); renderDeck(); renderStats(); return; }
+  const card = e.target.closest(".card");
+  if(card) card.classList.toggle("flipped");
+});
+$("#deck").addEventListener("keydown", e => {
+  if((e.key === "Enter" || e.key === " ") && e.target.classList.contains("card")){
+    e.preventDefault(); e.target.classList.toggle("flipped");
+  }
+});
+
+/* ---------- kelime ekleme ---------- */
+async function addWord(){
+  const word = $("#wordInput").value.trim();
+  if(!word) return;
+  if(deck.some(d => d.word.toLowerCase() === word.toLowerCase())){
+    alert("Bu kelime zaten defterinde."); return;
+  }
+  $("#addBtn").disabled = true; $("#addBtn").textContent = "Hazırlanıyor…";
+  try{
+    const w = await ask(`"${word}" kelimesi için bir dil öğrenme kartı hazırla.
+Sadece geçerli JSON döndür, başka hiçbir şey yazma:
+{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`);
+    deck.unshift(freshCard(w));
+    $("#wordInput").value = "";
+    await save(); renderDeck(); renderStats();
+    if(!$("#study").hidden) renderStudy();
+  }catch(err){ alert("Kart oluşturulamadı: " + err.message); }
+  $("#addBtn").disabled = false; $("#addBtn").textContent = "Karta çevir";
+}
+$("#addBtn").onclick = addWord;
+$("#wordInput").addEventListener("keydown", e => { if(e.key === "Enter") addWord(); });
+
+/* ---------- seviyeye göre üretme ---------- */
+$("#genBtn").onclick = async () => {
+  const btn = $("#genBtn");
+  btn.disabled = true; btn.textContent = "Getiriliyor…";
+  try{
+    const topic = $("#topic").value.trim();
+    const out = await ask(`${$("#level").value} seviyesinde, ${topic ? `"${topic}" konusuyla ilgili ` : ""}en sık kullanılan ${$("#howmany").value} İngilizce kelime seç.
+Şu kelimeleri tekrar etme: ${deck.map(d=>d.word).join(", ") || "yok"}.
+Sadece geçerli JSON dizisi döndür:
+[{"word":"","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","example":"","exampleTr":""}]`);
+    deck = out.map(freshCard).concat(deck);
+    await save(); renderDeck(); renderStats();
+    if(!$("#study").hidden) renderStudy();
+  }catch(err){ alert("Kelimeler getirilemedi: " + err.message); }
+  btn.disabled = false; btn.textContent = "En sık kullanılanları getir";
+};
+
+/* ---------- alıştırma ---------- */
+$("#quiz").addEventListener("click", e => {
+  const o = e.target.closest(".opt");
+  if(!o || o.closest(".q").dataset.done) return;
+  const q = o.closest(".q");
+  q.dataset.done = "1";
+  q.querySelectorAll(".opt").forEach((b,i) => {
+    if(i == q.dataset.answer) b.classList.add("right");
+    else if(b === o) b.classList.add("wrong");
+  });
+  q.querySelector(".hint").hidden = false;
+});
+async function buildQuiz(){
+  const el = $("#quiz");
+  if(deck.length < 4){
+    el.innerHTML = `<div class="empty"><b>En az 4 kelime gerek</b>Alıştırma üretebilmem için desteni biraz doldur.</div>`;
+    return;
+  }
+  el.innerHTML = `<p class="loading">Sorular yazılıyor…</p>`;
+  // tekrarı yaklaşan kelimelere öncelik ver
+  const focus = deck.slice().sort((a,b)=>a.due-b.due).slice(0,10).map(d=>d.word);
+  try{
+    const qs = await ask(`Şu kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
+En fazla 5 soru. Her soruda boşluk "___" ile gösterilsin, doğru cevap listedeki kelimelerden biri olsun, 4 şık olsun ve şıklar da listedeki kelimelerden seçilsin.
+Sadece geçerli JSON dizisi döndür:
+[{"sentence":"cümle ___ içeren","options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi"}]`);
+    el.innerHTML = qs.map(q => `
+      <div class="q" data-answer="${q.answer}">
+        <div class="qtext">${q.sentence.replace("___","<b>_____</b>")}</div>
+        <div class="opts">${q.options.map(o=>`<button class="opt">${o}</button>`).join("")}</div>
+        <div class="hint" hidden>${q.tr}</div>
+      </div>`).join("") + `<button class="ghost" id="requiz">Yeni set üret</button>`;
+    $("#requiz").onclick = buildQuiz;
+  }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
+}
+
+/* ---------- cümle kurma ---------- */
+let target = null;
+function newPrompt(){
+  const el = $("#write");
+  if(!deck.length){
+    el.innerHTML = `<div class="empty"><b>Önce kelime ekle</b>Cümle kurman için defterinde en az bir kelime olmalı.</div>`;
+    return;
+  }
+  target = deck[Math.floor(Math.random()*deck.length)];
+  el.innerHTML = `
+    <div class="q">
+      <div class="score">bu kelimeyle bir cümle kur</div>
+      <div class="prompt-word" style="color:${posColor(target.pos)}">${target.word}</div>
+      <div class="meta" style="--pos:${posColor(target.pos)};margin-bottom:14px">${target.pos} · ${target.tr}</div>
+      <textarea id="sentence" placeholder="Cümleni buraya yaz…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="checkBtn">Kontrol et</button>
+        <button class="ghost" id="skipBtn">Başka kelime</button>
+      </div>
+      <div id="fb"></div>
+    </div>`;
+  $("#skipBtn").onclick = newPrompt;
+  $("#checkBtn").onclick = check;
+}
+async function check(){
+  const s = $("#sentence").value.trim();
+  if(!s) return;
+  $("#fb").innerHTML = `<p class="loading">Değerlendiriliyor…</p>`;
+  try{
+    const r = await ask(`Bir Türk öğrenci "${target.word}" kelimesini kullanarak şu cümleyi kurdu: "${s}".
+Cümleyi dilbilgisi, kelime kullanımı ve doğallık açısından değerlendir. Geri bildirimi Türkçe yaz, kısa ve öğretici olsun.
+Sadece geçerli JSON döndür:
+{"score":"0-10 arası sayı","corrected":"düzeltilmiş cümle (gerekmiyorsa aynısı)","feedback":"1-3 cümlelik Türkçe açıklama"}`);
+    const good = Number(r.score) >= 7;
+    // doğru kullanım kartın tekrar aralığını da ilerletir
+    schedule(target, good ? 2 : 0); await save(); renderStats();
+    $("#fb").innerHTML = `
+      <div class="feedback ${good ? "" : "bad"}">
+        <div class="score">puan ${r.score}/10 · kart ${good ? "ilerletildi" : "tekrara alındı"}</div>
+        <div style="font-family:var(--display);font-size:19px;margin-bottom:8px">${r.corrected}</div>
+        <div>${r.feedback}</div>
+      </div>
+      <button class="ghost" style="margin-top:12px" id="nextBtn">Sıradaki kelime</button>`;
+    $("#nextBtn").onclick = newPrompt;
+  }catch(err){ $("#fb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+}
+
+/* ---------- sekmeler ---------- */
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
+  ["study","deck","quiz","write"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
+  if(b.dataset.tab === "study"){ revealed = false; renderStudy(); }
+  if(b.dataset.tab === "deck") renderDeck();
+  if(b.dataset.tab === "quiz") buildQuiz();
+  if(b.dataset.tab === "write") newPrompt();
+});
+
+/* ---------- başlangıç ---------- */
+(async () => { await load(); renderStats(); renderStudy(); renderDeck(); })();
+</script>
