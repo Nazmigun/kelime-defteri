@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   }
   // --- teşhis sonu ---
 
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + key;
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=" + key;
 
   try {
     const r = await fetch(url, {
