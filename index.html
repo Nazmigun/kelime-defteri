@@ -19,7 +19,7 @@
   .wrap{max-width:980px;margin:0 auto;padding:0 20px 80px}
 
   .topbar{position:sticky;top:0;z-index:50;padding:24px 20px 0;margin:0 -20px;
-    background:rgba(27,18,32,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    background:rgba(27,18,32,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border-bottom:1px solid transparent;transition:border-color .2s ease}
   .topbar.stuck{border-bottom-color:var(--line)}
   header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
@@ -49,6 +49,7 @@
 
   .entry{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .entry input{flex:1;min-width:200px;font-size:17px}
+  .gear{display:none;padding:12px 14px;flex:none;font-size:16px}
   .gen{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border:1px dashed var(--line);border-radius:12px;padding:10px;margin-bottom:14px}
   .gen label{font-family:var(--mono);font-size:11px;color:var(--paper-dim);text-transform:uppercase;letter-spacing:.08em}
   .topbar.stuck .gen{display:none}
@@ -99,7 +100,6 @@
   .loading{font-family:var(--mono);font-size:12px;color:var(--saffron);letter-spacing:.08em}
   .err{color:var(--rose);font-size:13px;margin-top:10px}
 
-  /* ---- tekrar / kaydırma ---- */
   .stage{position:relative;touch-action:pan-y}
   .study{text-align:center;border:1px solid var(--line);border-radius:16px;background:var(--ink-2);
     padding:40px 24px;position:relative;overflow:hidden;user-select:none;
@@ -130,7 +130,7 @@
   .toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%) translateY(20px);z-index:80;
     background:var(--ink-3);border:1px solid var(--line);border-radius:30px;padding:10px 20px;
     font-family:var(--mono);font-size:12px;letter-spacing:.06em;opacity:0;pointer-events:none;
-    transition:opacity .2s ease,transform .2s ease}
+    transition:opacity .2s ease,transform .2s ease;max-width:88vw;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
   .phrase{border:1px solid var(--line);border-left:3px solid var(--violet);border-radius:0 12px 12px 0;
@@ -147,7 +147,7 @@
   .gbtn svg{width:18px;height:18px;flex:none}
   .or{display:flex;align-items:center;gap:12px;color:var(--paper-dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
   .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-  .mail{display:flex;gap:8px} .mail input{flex:1}
+  .mail{display:flex;gap:8px} .mail input{flex:1;min-width:0}
   .guest{background:none;border:none;color:var(--paper-dim);font-weight:400;font-size:13px;text-decoration:underline;text-underline-offset:3px}
   .guest:hover{color:var(--paper);filter:none}
   .note{font-size:12px;color:var(--paper-dim);line-height:1.5;margin:0}
@@ -156,7 +156,33 @@
     border:1px solid var(--line);border-left:3px solid var(--saffron);border-radius:0 10px 10px 0;
     padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--paper-dim)}
   .guest-bar button{padding:8px 14px;font-size:13px}
-  @media (max-width:520px){.grades{grid-template-columns:repeat(2,1fr)}}
+
+  /* ---------- mobil ---------- */
+  @media (max-width:640px){
+    .wrap{padding:0 14px 40px}
+    .topbar{padding:12px 14px 0;margin:0 -14px}
+    header{margin-bottom:10px;align-items:center;gap:10px}
+    h1{font-size:24px}
+    .topbar.stuck h1{font-size:20px}
+    .stats{font-size:10px;line-height:1.5;letter-spacing:.05em}
+    .who{margin-top:2px}
+    .gear{display:block}
+    .entry{gap:6px;margin-bottom:8px;flex-wrap:nowrap}
+    .entry input{font-size:16px;padding:11px 12px;min-width:0}
+    #addBtn{padding:11px 13px;font-size:13px;flex:none}
+    .gen{display:none;margin-bottom:10px}
+    .topbar.gen-open .gen,.topbar.stuck.gen-open .gen{display:flex}
+    .gen input,.gen select{flex:1;min-width:0;width:auto}
+    nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+    nav::-webkit-scrollbar{display:none}
+    nav button{padding:9px 12px;font-size:13px;white-space:nowrap}
+    main{padding-top:16px}
+    .study{padding:28px 16px}
+    .grades{grid-template-columns:repeat(2,1fr)}
+    .deck{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+    .phrase{flex-direction:column;align-items:stretch;gap:10px}
+    .toast{bottom:20px}
+  }
   @media (prefers-reduced-motion:reduce){.inner{transition:none}}
 </style>
 
@@ -194,7 +220,8 @@
         <button id="toLoginBtn">Giriş yap</button>
       </div>
       <div class="entry">
-        <input id="wordInput" placeholder="Bir kelime yaz ve Enter'a bas — örn. resilient" autocomplete="off">
+        <input id="wordInput" placeholder="Bir kelime yaz ve Enter'a bas" autocomplete="off">
+        <button class="ghost gear" id="gearBtn" aria-label="Üretme ayarları">⚙</button>
         <button id="addBtn">Karta çevir</button>
       </div>
       <div class="gen">
@@ -302,7 +329,6 @@ const store = {
   }
 };
 
-/* ---------- aralıklı tekrar ---------- */
 function freshCard(w){
   return Object.assign({reps:0, ease:2.5, interval:0, due:Date.now(), lapses:0, lang:LANG}, w);
 }
@@ -347,7 +373,7 @@ async function ask(prompt){
 function renderStats(){
   const due = dueCards().length;
   const mature = deck.filter(c => c.interval >= 21).length;
-  $("#stats").innerHTML = `<b>${deck.length}</b> kelime · <b>${mature}</b> öğrenildi<br>bugün tekrar: <b>${due}</b>`;
+  $("#stats").innerHTML = `<b>${deck.length}</b> kelime · <b>${mature}</b> öğrenildi<br>bugün: <b>${due}</b>`;
   const b = $("#dueBadge");
   b.hidden = !due; b.textContent = due;
 }
@@ -373,7 +399,7 @@ function renderStudy(){
   const el = $("#study");
   const queue = dueCards();
   if(!deck.length){
-    el.innerHTML = `<div class="empty"><b>Defter boş</b>Yukarıya bir kelime yaz ya da seviyene göre en sık kullanılan kelimeleri getir.</div>`;
+    el.innerHTML = `<div class="empty"><b>Defter boş</b>Yukarıya bir kelime yaz ya da ⚙ ile seviyene göre kelime getir.</div>`;
     current = null; return;
   }
   if(!queue.length){
@@ -418,8 +444,6 @@ function peek(g){
   const copy = schedule(Object.assign({}, current), g);
   return copy.interval < 1 ? "<1 gün" : copy.interval + " gün";
 }
-
-/* sağa kaydırma: öğrendim → 21 gün sonra */
 function learned(){
   const card = current;
   card.reps++;
@@ -430,7 +454,6 @@ function learned(){
   revealed = false; grading = false;
   renderStats(); renderStudy();
 }
-/* dört seçenekten biri */
 function grade(g){
   const card = current;
   schedule(card, g);
@@ -459,7 +482,7 @@ function enableSwipe(){
     const mx = e.clientX - x0, my = e.clientY - y0;
     if(!locked){
       if(Math.abs(mx) < 6 && Math.abs(my) < 6) return;
-      if(Math.abs(my) > Math.abs(mx)){ x0 = null; el.classList.remove("dragging"); return; } // dikey = sayfa kaydırma
+      if(Math.abs(my) > Math.abs(mx)){ x0 = null; el.classList.remove("dragging"); return; }
       locked = true;
       el.setPointerCapture(e.pointerId);
     }
@@ -548,7 +571,7 @@ async function addWord(){
   const word = $("#wordInput").value.trim();
   if(!word) return;
   if(deck.some(d => d.word.toLowerCase() === word.toLowerCase())){ toast("Bu kelime zaten defterinde"); return; }
-  $("#addBtn").disabled = true; $("#addBtn").textContent = "Hazırlanıyor…";
+  $("#addBtn").disabled = true; $("#addBtn").textContent = "…";
   try{
     const w = await ask(`"${word}" kelimesi için bir dil öğrenme kartı hazırla.
 Sadece geçerli JSON döndür, başka hiçbir şey yazma:
@@ -563,6 +586,7 @@ Sadece geçerli JSON döndür, başka hiçbir şey yazma:
 }
 $("#addBtn").onclick = addWord;
 $("#wordInput").addEventListener("keydown", e => { if(e.key === "Enter") addWord(); });
+$("#gearBtn").onclick = () => $("#topbar").classList.toggle("gen-open");
 
 $("#genBtn").onclick = async () => {
   const btn = $("#genBtn");
@@ -584,10 +608,9 @@ Sadece geçerli JSON dizisi döndür:
 /* ---------- kalıplar ---------- */
 function renderPhrases(){
   $("#phrases").innerHTML = `
-    <div class="gen" style="margin-bottom:18px">
-      <label for="situation">Durum</label>
-      <input id="situation" placeholder="örn. restoranda, telefonda, tanışma" style="flex:1;min-width:180px">
-      <button id="phraseBtn">Kalıpları getir</button>
+    <div class="gen" style="margin-bottom:18px;display:flex">
+      <input id="situation" placeholder="Durum — örn. restoranda, telefonda" style="flex:1;min-width:140px">
+      <button id="phraseBtn">Getir</button>
     </div>
     <div id="phraseList"><div class="empty"><b>Günlük kalıplar</b>Bir durum yaz — o durumda anadili İngilizce olanların ezbere kullandığı cümleleri getireyim.</div></div>`;
   $("#phraseBtn").onclick = fetchPhrases;
@@ -597,7 +620,7 @@ async function fetchPhrases(){
   const s = $("#situation").value.trim();
   if(!s){ toast("Önce bir durum yaz"); return; }
   const btn = $("#phraseBtn");
-  btn.disabled = true; btn.textContent = "Getiriliyor…";
+  btn.disabled = true; btn.textContent = "…";
   $("#phraseList").innerHTML = `<p class="loading">Kalıplar hazırlanıyor…</p>`;
   try{
     const out = await ask(`"${s}" durumunda anadili İngilizce olanların günlük hayatta ezbere kullandığı 8 kalıp cümle ver.
@@ -615,7 +638,7 @@ Sadece geçerli JSON dizisi döndür:
       </div>`).join("");
     $("#phraseList").dataset.payload = JSON.stringify(out);
   }catch(err){ $("#phraseList").innerHTML = `<p class="err">Kalıplar getirilemedi: ${err.message}</p>`; }
-  btn.disabled = false; btn.textContent = "Kalıpları getir";
+  btn.disabled = false; btn.textContent = "Getir";
 }
 $("#phrases").addEventListener("click", async e => {
   const b = e.target.closest("[data-add]");
@@ -747,7 +770,7 @@ $("#mailBtn").onclick = async () => {
   const email = $("#mailInput").value.trim();
   if(!email) return;
   const btn = $("#mailBtn");
-  btn.disabled = true; btn.textContent = "Gönderiliyor…";
+  btn.disabled = true; btn.textContent = "…";
   const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
   $("#mailMsg").innerHTML = error
     ? `<p class="err">${error.message}</p>`
