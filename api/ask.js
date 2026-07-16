@@ -2,16 +2,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Sadece POST" });
 
   const key = process.env.GEMINI_API_KEY;
-
-  // --- geçici teşhis ---
-  if (req.body.prompt === "TEST") {
-    return res.status(200).json({
-      var: key ? "var" : "yok",
-      uzunluk: key ? key.length : 0,
-      basi: key ? key.slice(0, 4) : "-"
-    });
-  }
-  // --- teşhis sonu ---
+  if (!key) return res.status(500).json({ error: "GEMINI_API_KEY tanımlı değil" });
 
   const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=" + key;
 
@@ -28,7 +19,9 @@ export default async function handler(req, res) {
     const data = await r.json();
     if (!r.ok) return res.status(r.status).json({ error: data.error?.message || "API hatası" });
 
-    const text = data.candidates[0].content.parts[0].text;
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return res.status(502).json({ error: "Model boş cevap döndü" });
+
     res.status(200).json({ text });
   } catch (e) {
     res.status(500).json({ error: e.message });
