@@ -27,6 +27,11 @@
     letter-spacing:-.02em;transition:font-size .2s ease}
   .topbar.stuck h1{font-size:clamp(22px,3vw,30px)}
   h1 em{font-style:italic;font-weight:400;color:var(--saffron)}
+  .langsw{display:flex;justify-content:flex-end;gap:4px;margin-bottom:6px}
+  .langsw button{background:transparent;border:1px solid var(--line);color:var(--paper-dim);font-family:var(--mono);
+    font-size:11px;letter-spacing:.06em;padding:4px 10px;border-radius:20px;font-weight:500}
+  .langsw button.active{background:var(--saffron);color:#231708;border-color:var(--saffron)}
+  .langsw button:hover{filter:none;border-color:var(--saffron)}
   .stats{font-family:var(--mono);font-size:12px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase;text-align:right;line-height:1.7}
   .stats b{color:var(--saffron)}
   .who{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase}
@@ -215,6 +220,10 @@
       <header>
         <h1>Kelime <em>Defteri</em></h1>
         <div>
+          <div class="langsw" id="langSwitch">
+            <button type="button" data-lang="en">EN</button>
+            <button type="button" data-lang="de">DE</button>
+          </div>
           <div class="stats" id="stats"></div>
           <div class="who" id="who"></div>
         </div>
@@ -278,7 +287,9 @@ index.html içinde şu iki satırı doldur:
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const DAY = 86400000;
-const LANG = "en";
+const LANG_KEY = "kelime-defteri:lang";
+const LANG_NAMES = {en:"İngilizce", de:"Almanca"};
+let LANG = localStorage.getItem(LANG_KEY) || "en";
 const LOCAL_KEY = "kelime-defteri:misafir";
 const POS = {isim:"var(--sky)",fiil:"var(--mint)","sıfat":"var(--saffron)",zarf:"var(--violet)",
   edat:"var(--rose)","bağlaç":"var(--rose)","ünlem":"var(--rose)","kalıp":"var(--violet)"};
@@ -304,7 +315,7 @@ const local = {
 };
 const store = {
   async load(){
-    if(guest) return local.read();
+    if(guest) return local.read().filter(c => c.lang === LANG);
     const { data, error } = await sb.from("cards").select("*").eq("lang", LANG).order("due");
     if(error){ console.error(error); return []; }
     return data.map(fromRow);
@@ -322,14 +333,20 @@ const store = {
     return data.map(fromRow);
   },
   async update(c){
-    if(guest){ local.write(deck); return; }
+    if(guest){
+      const all = local.read();
+      const idx = all.findIndex(x => x.id === c.id);
+      if(idx > -1) all[idx] = c;
+      local.write(all);
+      return;
+    }
     const { error } = await sb.from("cards")
       .update({ reps:c.reps, ease:c.ease, interval:c.interval, due:new Date(c.due).toISOString(), lapses:c.lapses })
       .eq("id", c.id);
     if(error) console.error("kaydedilemedi:", error);
   },
   async remove(id){
-    if(guest){ local.write(deck); return; }
+    if(guest){ local.write(local.read().filter(x => x.id !== id)); return; }
     const { error } = await sb.from("cards").delete().eq("id", id);
     if(error) console.error(error);
   }
@@ -690,9 +707,9 @@ async function addWord(){
   if(deck.some(d => d.word.toLowerCase() === word.toLowerCase())){ toast("Bu kelime zaten defterinde"); return; }
   $("#addBtn").disabled = true; $("#addBtn").textContent = "…";
   try{
-    const w = await ask(`"${word}" kelimesi için bir dil öğrenme kartı hazırla.
+    const w = await ask(`"${word}" kelimesi için ${LANG_NAMES[LANG]} dilinde bir dil öğrenme kartı hazırla.
 Sadece geçerli JSON döndür, başka hiçbir şey yazma:
-{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`);
+{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`);
     deck.unshift(await store.insert(freshCard(w)));
     $("#wordInput").value = "";
     renderDeck(); renderStats();
@@ -710,10 +727,10 @@ $("#genBtn").onclick = async () => {
   btn.disabled = true; btn.textContent = "Getiriliyor…";
   try{
     const topic = $("#topic").value.trim();
-    const out = await ask(`${$("#level").value} seviyesinde, ${topic ? `"${topic}" konusuyla ilgili ` : ""}en sık kullanılan ${$("#howmany").value} İngilizce kelime seç.
+    const out = await ask(`${$("#level").value} seviyesinde, ${topic ? `"${topic}" konusuyla ilgili ` : ""}en sık kullanılan ${$("#howmany").value} ${LANG_NAMES[LANG]} kelime seç.
 Şu kelimeleri tekrar etme: ${deck.map(d=>d.word).join(", ") || "yok"}.
 Sadece geçerli JSON dizisi döndür:
-[{"word":"","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","example":"","exampleTr":""}]`);
+[{"word":"","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"","exampleTr":""}]`);
     deck = (await store.insertMany(out.map(freshCard))).concat(deck);
     renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
@@ -729,7 +746,7 @@ function renderPhrases(){
       <input id="situation" placeholder="Durum — örn. restoranda, telefonda" style="flex:1;min-width:140px">
       <button id="phraseBtn">Getir</button>
     </div>
-    <div id="phraseList"><div class="empty"><b>Günlük kalıplar</b>Bir durum yaz — o durumda anadili İngilizce olanların ezbere kullandığı cümleleri getireyim.</div></div>`;
+    <div id="phraseList"><div class="empty"><b>Günlük kalıplar</b>Bir durum yaz — o durumda anadili ${LANG_NAMES[LANG]} olanların ezbere kullandığı cümleleri getireyim.</div></div>`;
   $("#phraseBtn").onclick = fetchPhrases;
   $("#situation").addEventListener("keydown", e => { if(e.key === "Enter") fetchPhrases(); });
 }
@@ -740,10 +757,10 @@ async function fetchPhrases(){
   btn.disabled = true; btn.textContent = "…";
   $("#phraseList").innerHTML = `<p class="loading">Kalıplar hazırlanıyor…</p>`;
   try{
-    const out = await ask(`"${s}" durumunda anadili İngilizce olanların günlük hayatta ezbere kullandığı 8 kalıp cümle ver.
-${$("#level").value} seviyesine uygun olsun. Ders kitabı İngilizcesi değil, gerçekte konuşulan doğal kalıplar olsun.
+    const out = await ask(`"${s}" durumunda anadili ${LANG_NAMES[LANG]} olanların günlük hayatta ezbere kullandığı 8 kalıp cümle ver.
+${$("#level").value} seviyesine uygun olsun. Ders kitabı kalıpları değil, gerçekte konuşulan doğal kalıplar olsun.
 Sadece geçerli JSON dizisi döndür:
-[{"phrase":"İngilizce kalıp","tr":"Türkçe karşılığı","use":"ne zaman kullanıldığına dair kısa Türkçe not"}]`);
+[{"phrase":"${LANG_NAMES[LANG]} kalıp","tr":"Türkçe karşılığı","use":"ne zaman kullanıldığına dair kısa Türkçe not"}]`);
     $("#phraseList").innerHTML = out.map((p,i) => `
       <div class="phrase">
         <div>
@@ -797,7 +814,7 @@ async function buildQuiz(){
   el.innerHTML = `<p class="loading">Sorular yazılıyor…</p>`;
   const focus = words.slice().sort((a,b)=>a.due-b.due).slice(0,10).map(d=>d.word);
   try{
-    const qs = await ask(`Şu kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
+    const qs = await ask(`Şu ${LANG_NAMES[LANG]} kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
 En fazla 5 soru. Her soruda boşluk "___" ile gösterilsin, doğru cevap listedeki kelimelerden biri olsun, 4 şık olsun ve şıklar da listedeki kelimelerden seçilsin.
 Sadece geçerli JSON dizisi döndür:
 [{"sentence":"cümle ___ içeren","options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi"}]`);
@@ -841,7 +858,7 @@ async function check(){
   if(!s) return;
   $("#fb").innerHTML = `<p class="loading">Değerlendiriliyor…</p>`;
   try{
-    const r = await ask(`Bir Türk öğrenci "${target.word}" kelimesini kullanarak şu cümleyi kurdu: "${s}".
+    const r = await ask(`Bir Türk öğrenci ${LANG_NAMES[LANG]} öğrenirken "${target.word}" kelimesini kullanarak şu cümleyi kurdu: "${s}".
 Cümleyi dilbilgisi, kelime kullanımı ve doğallık açısından değerlendir. Geri bildirimi Türkçe yaz, kısa ve öğretici olsun.
 Sadece geçerli JSON döndür:
 {"score":"0-10 arası sayı","corrected":"düzeltilmiş cümle (gerekmiyorsa aynısı)","feedback":"1-3 cümlelik Türkçe açıklama"}`);
@@ -860,16 +877,37 @@ Sadece geçerli JSON döndür:
 }
 
 /* ---------- sekmeler ---------- */
+function renderTab(tab){
+  if(tab === "study"){ revealed = false; grading = false; renderStudy(); }
+  if(tab === "leech") enterLeech();
+  if(tab === "deck") renderDeck();
+  if(tab === "quiz") buildQuiz();
+  if(tab === "write") newPrompt();
+  if(tab === "phrases") renderPhrases();
+}
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
   ["study","leech","deck","quiz","write","phrases"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
-  if(b.dataset.tab === "study"){ revealed = false; grading = false; renderStudy(); }
-  if(b.dataset.tab === "leech") enterLeech();
-  if(b.dataset.tab === "deck") renderDeck();
-  if(b.dataset.tab === "quiz") buildQuiz();
-  if(b.dataset.tab === "write") newPrompt();
-  if(b.dataset.tab === "phrases") renderPhrases();
+  renderTab(b.dataset.tab);
 });
+
+/* ---------- dil ---------- */
+function syncLangSwitch(){
+  document.querySelectorAll("#langSwitch button").forEach(b => b.classList.toggle("active", b.dataset.lang === LANG));
+}
+async function switchLang(l){
+  if(l === LANG) return;
+  LANG = l;
+  localStorage.setItem(LANG_KEY, l);
+  syncLangSwitch();
+  if($("#app").hidden) return;
+  deck = await store.load();
+  renderStats();
+  const activeTab = document.querySelector('nav button[aria-selected="true"]')?.dataset.tab || "study";
+  renderTab(activeTab);
+}
+document.querySelectorAll("#langSwitch button").forEach(b => b.onclick = () => switchLang(b.dataset.lang));
+syncLangSwitch();
 
 /* ---------- giriş ---------- */
 function showGate(){ guest = false; $("#gate").hidden = false; $("#app").hidden = true; }
