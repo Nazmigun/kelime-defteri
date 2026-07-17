@@ -8,14 +8,21 @@
 <style>
   :root{
     --ink:#1B1220; --ink-2:#271A2D; --ink-3:#33233B; --line:#4A3552;
-    --paper:#F4EDE3; --paper-dim:#C6B7C4;
+    --paper:#F4EDE3; --paper-dim:#C6B7C4; --muted:#7C6884;
     --saffron:#E8B33C; --mint:#79D2A6; --rose:#E4728C; --sky:#7FB6E8; --violet:#B49AE8;
+    --back-a:#2E2036; --back-b:#241830; --glow:#3A2440;
     --display:'Fraunces',Georgia,serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  :root[data-theme="light"]{
+    --ink:#F2EAE0; --ink-2:#FFFFFF; --ink-3:#FBF3E8; --line:#E1D3CC;
+    --paper:#241830; --paper-dim:#8A7690; --muted:#A392A0;
+    --saffron:#B8791A; --mint:#1E8A5F; --rose:#C23A5E; --sky:#2E6FB0; --violet:#6B4FB8;
+    --back-a:#FFFFFF; --back-b:#F3EAF6; --glow:#FBE9C7;
   }
   [hidden]{display:none !important}
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#3A2440 0%,transparent 60%),var(--ink);
-    color:var(--paper);font-family:var(--body);min-height:100vh}
+  body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,var(--glow) 0%,transparent 60%),var(--ink);
+    color:var(--paper);font-family:var(--body);min-height:100vh;transition:background-color .2s ease,color .2s ease}
   .wrap{max-width:980px;margin:0 auto;padding:0 20px 80px}
 
   .topbar{position:sticky;top:0;z-index:50;padding:24px 20px 0;margin:0 -20px;
@@ -27,11 +34,15 @@
     letter-spacing:-.02em;transition:font-size .2s ease}
   .topbar.stuck h1{font-size:clamp(22px,3vw,30px)}
   h1 em{font-style:italic;font-weight:400;color:var(--saffron)}
-  .langsw{display:flex;justify-content:flex-end;gap:4px;margin-bottom:6px}
+  .controls-row{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:6px}
+  .langsw{display:flex;gap:4px}
   .langsw button{background:transparent;border:1px solid var(--line);color:var(--paper-dim);font-family:var(--mono);
     font-size:11px;letter-spacing:.06em;padding:4px 10px;border-radius:20px;font-weight:500}
   .langsw button.active{background:var(--saffron);color:#231708;border-color:var(--saffron)}
   .langsw button:hover{filter:none;border-color:var(--saffron)}
+  .theme-toggle{background:transparent;border:1px solid var(--line);color:var(--paper-dim);width:26px;height:26px;
+    padding:0;border-radius:50%;font-size:13px;display:flex;align-items:center;justify-content:center;line-height:1}
+  .theme-toggle:hover{filter:none;border-color:var(--saffron);color:var(--saffron)}
   .stats{font-family:var(--mono);font-size:12px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase;text-align:right;line-height:1.7}
   .stats b{color:var(--saffron)}
   .who{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase}
@@ -42,7 +53,7 @@
   input,select,textarea{font-family:var(--body);font-size:15px;color:var(--paper);background:var(--ink-2);
     border:1px solid var(--line);border-radius:10px;padding:12px 14px;outline:none}
   input:focus,select:focus,textarea:focus{border-color:var(--saffron);box-shadow:0 0 0 3px rgba(232,179,60,.18)}
-  input::placeholder,textarea::placeholder{color:#7C6884}
+  input::placeholder,textarea::placeholder{color:var(--muted)}
   button{font-family:var(--body);font-weight:600;font-size:14px;cursor:pointer;border-radius:10px;
     padding:12px 18px;border:1px solid transparent;background:var(--saffron);color:#231708;
     transition:transform .12s ease,filter .12s ease}
@@ -74,14 +85,14 @@
     background:linear-gradient(180deg,var(--ink-3),var(--ink-2));padding:16px 16px 16px 22px;
     display:flex;flex-direction:column;justify-content:space-between;text-align:left;overflow:hidden}
   .face::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--pos,var(--saffron))}
-  .back{transform:rotateY(180deg);background:linear-gradient(180deg,#2E2036,#241830)}
-  .term{font-family:var(--display);font-size:26px;font-weight:600;line-height:1.05;letter-spacing:-.01em}
+  .back{transform:rotateY(180deg);background:linear-gradient(180deg,var(--back-a),var(--back-b))}
+  .term{font-family:var(--display);font-size:26px;font-weight:600;line-height:1.05;letter-spacing:-.01em;margin-top:14px}
   .tr{font-family:var(--display);font-size:22px;font-weight:600;color:var(--saffron);line-height:1.1}
   .meta{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pos,var(--paper-dim))}
   .due{font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.06em}
   .due.now{color:var(--mint)}
   .ex{font-size:12px;color:var(--paper-dim);line-height:1.4}
-  .del{position:absolute;top:8px;right:10px;background:none;border:none;color:#7C6884;font-size:15px;padding:2px 6px;border-radius:6px}
+  .del{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:15px;padding:2px 6px;border-radius:6px}
   .del:hover{color:var(--rose);filter:none}
   .bar{position:absolute;left:7px;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06)}
   .bar i{display:block;height:100%;background:var(--mint)}
@@ -131,8 +142,8 @@
   .grades button span{display:block;font-family:var(--mono);font-size:10px;color:var(--paper-dim);margin-top:3px;letter-spacing:.05em}
   .g0{color:var(--rose)!important} .g1{color:var(--saffron)!important} .g2{color:var(--mint)!important} .g3{color:var(--sky)!important}
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
-  .deck-toolbar{justify-content:flex-start}
-  .deck-toolbar select{font-size:13px;padding:9px 10px}
+  .deck-toolbar select,.deck-filters select{font-size:13px;padding:9px 10px}
+  .deck-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border:1px dashed var(--line);border-radius:12px;padding:10px;margin-bottom:14px}
   .lapses{position:absolute;top:8px;left:10px;font-family:var(--mono);font-size:10px;color:var(--rose);
     background:rgba(228,114,140,.14);border:1px solid var(--rose);border-radius:20px;padding:1px 7px}
   .save-state{font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase}
@@ -152,7 +163,7 @@
 
   .gate{max-width:380px;margin:6vh auto 0;text-align:center;display:flex;flex-direction:column;gap:14px}
   .gate .lead{color:var(--paper-dim);line-height:1.6;margin:0 0 8px}
-  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--paper);color:#231708;font-size:15px;padding:13px 22px;width:100%}
+  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#F4EDE3;color:#231708;font-size:15px;padding:13px 22px;width:100%}
   .gbtn svg{width:18px;height:18px;flex:none}
   .or{display:flex;align-items:center;gap:12px;color:var(--paper-dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
   .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -220,9 +231,12 @@
       <header>
         <h1>Kelime <em>Defteri</em></h1>
         <div>
-          <div class="langsw" id="langSwitch">
-            <button type="button" data-lang="en">EN</button>
-            <button type="button" data-lang="de">DE</button>
+          <div class="controls-row">
+            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Temayı değiştir"></button>
+            <div class="langsw" id="langSwitch">
+              <button type="button" data-lang="en">EN</button>
+              <button type="button" data-lang="de">DE</button>
+            </div>
           </div>
           <div class="stats" id="stats"></div>
           <div class="who" id="who"></div>
@@ -287,6 +301,9 @@ index.html içinde şu iki satırı doldur:
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const DAY = 86400000;
+const THEME_KEY = "kelime-defteri:theme";
+let theme = localStorage.getItem(THEME_KEY) || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+document.documentElement.setAttribute("data-theme", theme);
 const LANG_KEY = "kelime-defteri:lang";
 const LANG_NAMES = {en:"İngilizce", de:"Almanca"};
 let LANG = localStorage.getItem(LANG_KEY) || "en";
@@ -611,6 +628,7 @@ document.addEventListener("keydown", e => {
 /* ---------- deste ---------- */
 const POS_LIST = ["isim","fiil","sıfat","zarf","edat","bağlaç","ünlem","kalıp"];
 let deckFilter = { due:"all", level:"all", pos:"all", sort:"due" };
+let deckFilterOpen = false;
 
 function filterDeck(){
   const now = Date.now();
@@ -635,8 +653,20 @@ function renderDeck(){
   }
   const list = filterDeck();
   const opt = (val, label, cur) => `<option value="${val}" ${val===cur?"selected":""}>${label}</option>`;
+  const activeCount = ["due","level","pos"].filter(k => deckFilter[k] !== "all").length;
   el.innerHTML = `
     <div class="toolbar deck-toolbar">
+      <div class="save-state">${list.length}${list.length !== deck.length ? ` / ${deck.length}` : ""} kelime</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="sortSelect">
+          ${opt("due","Sıradaki tekrara göre",deckFilter.sort)}
+          ${opt("lapses","En çok zorlandıklarım",deckFilter.sort)}
+        </select>
+        <button class="ghost" id="filterToggle">Filtrele${activeCount ? `<span class="badge">${activeCount}</span>` : ""}</button>
+      </div>
+    </div>
+    ${deckFilterOpen ? `
+    <div class="deck-filters">
       <select id="dueFilter">
         ${opt("all","Tüm zamanlar",deckFilter.due)}
         ${opt("today","Bugün",deckFilter.due)}
@@ -651,11 +681,8 @@ function renderDeck(){
         ${opt("all","Tüm türler",deckFilter.pos)}
         ${POS_LIST.map(p=>opt(p,p,deckFilter.pos)).join("")}
       </select>
-      <select id="sortSelect">
-        ${opt("due","Sıradaki tekrara göre",deckFilter.sort)}
-        ${opt("lapses","En çok zorlandıklarım",deckFilter.sort)}
-      </select>
-    </div>
+      ${activeCount ? `<button class="ghost" id="clearFilters">Temizle</button>` : ""}
+    </div>` : ""}
     ${list.length ? `<div class="deck">` + list.map(w => `
     <div class="card" tabindex="0" role="button" aria-label="${w.word} kartını çevir">
       <div class="inner">
@@ -677,10 +704,18 @@ function renderDeck(){
     </div>`).join("") + `</div>`
     : `<div class="empty"><b>Sonuç yok</b>Bu filtreye uyan kelime yok.</div>`}`;
 
-  $("#dueFilter").onchange = e => { deckFilter.due = e.target.value; renderDeck(); };
-  $("#levelFilter").onchange = e => { deckFilter.level = e.target.value; renderDeck(); };
-  $("#posFilter").onchange = e => { deckFilter.pos = e.target.value; renderDeck(); };
   $("#sortSelect").onchange = e => { deckFilter.sort = e.target.value; renderDeck(); };
+  $("#filterToggle").onclick = () => { deckFilterOpen = !deckFilterOpen; renderDeck(); };
+  if(deckFilterOpen){
+    $("#dueFilter").onchange = e => { deckFilter.due = e.target.value; renderDeck(); };
+    $("#levelFilter").onchange = e => { deckFilter.level = e.target.value; renderDeck(); };
+    $("#posFilter").onchange = e => { deckFilter.pos = e.target.value; renderDeck(); };
+    const clearBtn = $("#clearFilters");
+    if(clearBtn) clearBtn.onclick = () => {
+      deckFilter.due = "all"; deckFilter.level = "all"; deckFilter.pos = "all";
+      renderDeck();
+    };
+  }
 }
 $("#deck").addEventListener("click", async e => {
   const del = e.target.closest("[data-del]");
@@ -890,6 +925,19 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   ["study","leech","deck","quiz","write","phrases"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
   renderTab(b.dataset.tab);
 });
+
+/* ---------- tema ---------- */
+function syncThemeToggle(){
+  $("#themeToggle").textContent = theme === "dark" ? "☀" : "🌙";
+}
+function toggleTheme(){
+  theme = theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, theme);
+  document.documentElement.setAttribute("data-theme", theme);
+  syncThemeToggle();
+}
+$("#themeToggle").onclick = toggleTheme;
+syncThemeToggle();
 
 /* ---------- dil ---------- */
 function syncLangSwitch(){
