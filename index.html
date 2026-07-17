@@ -126,6 +126,10 @@
   .grades button span{display:block;font-family:var(--mono);font-size:10px;color:var(--paper-dim);margin-top:3px;letter-spacing:.05em}
   .g0{color:var(--rose)!important} .g1{color:var(--saffron)!important} .g2{color:var(--mint)!important} .g3{color:var(--sky)!important}
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+  .deck-toolbar{justify-content:flex-start}
+  .deck-toolbar select{font-size:13px;padding:9px 10px}
+  .lapses{position:absolute;top:8px;left:10px;font-family:var(--mono);font-size:10px;color:var(--rose);
+    background:rgba(228,114,140,.14);border:1px solid var(--rose);border-radius:20px;padding:1px 7px}
   .save-state{font-family:var(--mono);font-size:10px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase}
   .toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%) translateY(20px);z-index:80;
     background:var(--ink-3);border:1px solid var(--line);border-radius:30px;padding:10px 20px;
@@ -235,6 +239,7 @@
       </div>
       <nav role="tablist">
         <button role="tab" aria-selected="true" data-tab="study">Tekrar<span class="badge" id="dueBadge" hidden></span></button>
+        <button role="tab" aria-selected="false" data-tab="leech">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
         <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
         <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
         <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
@@ -243,6 +248,7 @@
     </div>
     <main>
       <section id="study"></section>
+      <section id="leech" hidden></section>
       <section id="deck" hidden></section>
       <section id="quiz" hidden></section>
       <section id="write" hidden></section>
@@ -338,9 +344,9 @@ function schedule(c, grade){
     c.interval = 0; c.due = Date.now() + 60000;
     return c;
   }
-  if(grade === 1){ c.ease = Math.max(1.3, c.ease - 0.15); c.interval = c.reps ? Math.max(1, c.interval * 1.2) : 1; }
+  if(grade === 1){ c.ease = Math.max(1.3, c.ease - 0.15); c.interval = c.reps ? Math.max(c.interval + 0.5, c.interval * 1.2) : 0.5; }
   else if(grade === 2){ c.interval = c.reps === 0 ? 1 : c.reps === 1 ? 3 : c.interval * c.ease; }
-  else { c.ease = Math.min(3.0, c.ease + 0.15); c.interval = (c.reps === 0 ? 2 : c.interval * c.ease) * 1.3; }
+  else { c.ease = Math.min(3.0, c.ease + 0.15); c.interval = (c.reps === 0 ? 3 : c.interval * c.ease) * 1.3; }
   c.reps++;
   c.interval = Math.round(c.interval * 10) / 10;
   c.due = Date.now() + c.interval * DAY;
@@ -348,6 +354,8 @@ function schedule(c, grade){
 }
 const dueCards = () => deck.filter(c => c.due <= Date.now());
 const maturity = c => Math.min(1, (c.interval || 0) / 21);
+const LEECH_THRESHOLD = 2;
+const leechCards = () => deck.filter(c => (c.lapses||0) >= LEECH_THRESHOLD);
 function dueLabel(c){
   const d = c.due - Date.now();
   if(d <= 0) return "şimdi";
@@ -376,6 +384,9 @@ function renderStats(){
   $("#stats").innerHTML = `<b>${deck.length}</b> kelime · <b>${mature}</b> öğrenildi<br>bugün: <b>${due}</b>`;
   const b = $("#dueBadge");
   b.hidden = !due; b.textContent = due;
+  const lc = leechCards().length;
+  const lb = $("#leechBadge");
+  lb.hidden = !lc; lb.textContent = lc;
 }
 function renderWho(){
   const el = $("#who");
@@ -464,6 +475,64 @@ function grade(g){
   renderStats(); renderStudy();
 }
 
+/* ---------- zorlandıklarım ---------- */
+let leechQueue = [], leechCurrent = null, leechRevealed = false;
+
+function enterLeech(){
+  leechQueue = leechCards().sort((a,b) => (b.lapses||0) - (a.lapses||0) || a.due - b.due);
+  leechRevealed = false;
+  renderLeech();
+}
+function renderLeech(){
+  const el = $("#leech");
+  if(!leechQueue.length){
+    el.innerHTML = `<div class="empty"><b>Zorlandığın kelime yok</b>Bir kelimeyi en az ${LEECH_THRESHOLD} kez "Bilmiyorum" işaretlersen burada ekstra pratik için çıkar.</div>`;
+    leechCurrent = null; return;
+  }
+  leechCurrent = leechQueue[0];
+  const c = leechCurrent;
+  el.innerHTML = `
+    <div class="toolbar"><div class="save-state">${leechQueue.length} kelime · en çok zorlandıkların, sıradan bağımsız</div></div>
+    <div class="stage">
+      <div class="study" id="lCardStage">
+        <div class="lapses" style="position:static;display:inline-flex;margin-bottom:12px">⚠ ${c.lapses} kez zorlandın</div>
+        <div class="meta" style="--pos:${posColor(c.pos)};margin-bottom:12px">${c.pos} · ${c.level||""}</div>
+        <div class="word" style="color:${posColor(c.pos)}">${c.artikel ? c.artikel + " " : ""}${c.word}</div>
+        ${leechRevealed ? `
+          <div class="answer">
+            <div class="tr">${c.tr}</div>
+            <div class="ex">${c.example||""}<br><span style="opacity:.6">${c.exampleTr||""}</span></div>
+          </div>
+          <div class="grades">
+            <button class="g0" data-lg="0">Bilmiyorum</button>
+            <button class="g1" data-lg="1">Zor</button>
+            <button class="g2" data-lg="2">İyi</button>
+            <button class="g3" data-lg="3">Kolay</button>
+          </div>`
+        : `<div style="margin-top:26px;display:flex;gap:8px;justify-content:center">
+            <button id="lReveal">Cevabı göster</button>
+            <button class="ghost" id="lSkip">Geç</button>
+          </div>`}
+      </div>
+    </div>`;
+  if(!leechRevealed){
+    el.querySelector("#lReveal").onclick = () => { leechRevealed = true; renderLeech(); };
+    el.querySelector("#lSkip").onclick = () => { leechQueue.push(leechQueue.shift()); renderLeech(); };
+  }
+  el.querySelectorAll("[data-lg]").forEach(b => b.onclick = () => gradeLeech(+b.dataset.lg));
+}
+function gradeLeech(g){
+  const card = leechCurrent;
+  schedule(card, g);
+  if(g >= 2) card.lapses = Math.max(0, (card.lapses||0) - 1);
+  store.update(card);
+  leechQueue.shift();
+  const graduated = (card.lapses||0) < LEECH_THRESHOLD;
+  toast(graduated ? `${card.word} · artık zorlandıkların arasında değil 🎉` : `${card.word} · biraz daha pekişti`);
+  leechRevealed = false;
+  renderStats(); renderLeech();
+}
+
 function enableSwipe(){
   const el = $("#cardStage");
   if(!el) return;
@@ -523,17 +592,59 @@ document.addEventListener("keydown", e => {
 });
 
 /* ---------- deste ---------- */
+const POS_LIST = ["isim","fiil","sıfat","zarf","edat","bağlaç","ünlem","kalıp"];
+let deckFilter = { due:"all", level:"all", pos:"all", sort:"due" };
+
+function filterDeck(){
+  const now = Date.now();
+  let list = deck.filter(w => {
+    if(deckFilter.due === "today" && !(w.due <= now)) return false;
+    if(deckFilter.due === "week" && !(w.due > now && w.due <= now + 7*DAY)) return false;
+    if(deckFilter.due === "postponed" && !(w.due > now + 7*DAY)) return false;
+    if(deckFilter.level !== "all" && w.level !== deckFilter.level) return false;
+    if(deckFilter.pos !== "all" && w.pos !== deckFilter.pos) return false;
+    return true;
+  });
+  if(deckFilter.sort === "lapses") list.sort((a,b) => (b.lapses||0) - (a.lapses||0) || a.due - b.due);
+  else list.sort((a,b) => a.due - b.due);
+  return list;
+}
+
 function renderDeck(){
   const el = $("#deck");
   if(!deck.length){
     el.innerHTML = `<div class="empty"><b>Defter boş</b>İlk kelimeni ekleyince kartlar burada birikir.</div>`;
     return;
   }
-  el.innerHTML = `<div class="deck">` + deck.map(w => `
+  const list = filterDeck();
+  const opt = (val, label, cur) => `<option value="${val}" ${val===cur?"selected":""}>${label}</option>`;
+  el.innerHTML = `
+    <div class="toolbar deck-toolbar">
+      <select id="dueFilter">
+        ${opt("all","Tüm zamanlar",deckFilter.due)}
+        ${opt("today","Bugün",deckFilter.due)}
+        ${opt("week","Bu hafta",deckFilter.due)}
+        ${opt("postponed","Ertelenmiş (7+ gün)",deckFilter.due)}
+      </select>
+      <select id="levelFilter">
+        ${opt("all","Tüm seviyeler",deckFilter.level)}
+        ${["A1","A2","B1","B2","C1"].map(l=>opt(l,l,deckFilter.level)).join("")}
+      </select>
+      <select id="posFilter">
+        ${opt("all","Tüm türler",deckFilter.pos)}
+        ${POS_LIST.map(p=>opt(p,p,deckFilter.pos)).join("")}
+      </select>
+      <select id="sortSelect">
+        ${opt("due","Sıradaki tekrara göre",deckFilter.sort)}
+        ${opt("lapses","En çok zorlandıklarım",deckFilter.sort)}
+      </select>
+    </div>
+    ${list.length ? `<div class="deck">` + list.map(w => `
     <div class="card" tabindex="0" role="button" aria-label="${w.word} kartını çevir">
       <div class="inner">
         <div class="face" style="--pos:${posColor(w.pos)}">
           <button class="del" data-del="${w.id}" aria-label="Sil">×</button>
+          ${w.lapses ? `<div class="lapses">⚠ ${w.lapses}</div>` : ""}
           <div class="term">${w.artikel ? w.artikel + " " : ""}${w.word}</div>
           <div>
             <div class="meta">${w.pos} · ${w.level||""}</div>
@@ -546,7 +657,13 @@ function renderDeck(){
           <div class="ex">${w.example||""}<br><span style="opacity:.6">${w.exampleTr||""}</span></div>
         </div>
       </div>
-    </div>`).join("") + `</div>`;
+    </div>`).join("") + `</div>`
+    : `<div class="empty"><b>Sonuç yok</b>Bu filtreye uyan kelime yok.</div>`}`;
+
+  $("#dueFilter").onchange = e => { deckFilter.due = e.target.value; renderDeck(); };
+  $("#levelFilter").onchange = e => { deckFilter.level = e.target.value; renderDeck(); };
+  $("#posFilter").onchange = e => { deckFilter.pos = e.target.value; renderDeck(); };
+  $("#sortSelect").onchange = e => { deckFilter.sort = e.target.value; renderDeck(); };
 }
 $("#deck").addEventListener("click", async e => {
   const del = e.target.closest("[data-del]");
@@ -745,8 +862,9 @@ Sadece geçerli JSON döndür:
 /* ---------- sekmeler ---------- */
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
-  ["study","deck","quiz","write","phrases"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
+  ["study","leech","deck","quiz","write","phrases"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
   if(b.dataset.tab === "study"){ revealed = false; grading = false; renderStudy(); }
+  if(b.dataset.tab === "leech") enterLeech();
   if(b.dataset.tab === "deck") renderDeck();
   if(b.dataset.tab === "quiz") buildQuiz();
   if(b.dataset.tab === "write") newPrompt();
