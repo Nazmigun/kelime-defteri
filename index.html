@@ -171,6 +171,11 @@
   .phrase button{padding:8px 12px;font-size:13px;flex:none}
   .phrase.added{opacity:.5}
 
+  .gsub{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  .gsub button{background:transparent;border:1px solid var(--line);color:var(--paper-dim);font-size:13px;padding:8px 14px;border-radius:20px;font-weight:500}
+  .gsub button.active{background:var(--saffron);color:#231708;border-color:var(--saffron)}
+  .gsub button:hover{filter:none;border-color:var(--saffron)}
+
   .gate{max-width:380px;margin:6vh auto 0;text-align:center;display:flex;flex-direction:column;gap:14px}
   .gate .lead{color:var(--paper-dim);line-height:1.6;margin:0 0 8px}
   .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#F4EDE3;color:#231708;font-size:15px;padding:13px 22px;width:100%}
@@ -275,6 +280,7 @@
         <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
         <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
         <button role="tab" aria-selected="false" data-tab="phrases">Kalıplar</button>
+        <button role="tab" aria-selected="false" data-tab="grammar">Dilbilgisi</button>
       </nav>
     </div>
     <main>
@@ -284,6 +290,7 @@
       <section id="quiz" hidden></section>
       <section id="write" hidden></section>
       <section id="phrases" hidden></section>
+      <section id="grammar" hidden></section>
     </main>
   </div>
 </div>
@@ -919,6 +926,310 @@ Sadece geçerli JSON döndür:
   }catch(err){ $("#fb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
 }
 
+/* ---------- dilbilgisi ---------- */
+const GRAMMAR_MODES = {micro:"Mini Ders", pattern:"Kalıp", vocab:"Kelime+Dilbilgisi", exam:"Sınav Modu"};
+const MICRO_TOPICS = ["Rastgele","Past Simple vs Present Perfect","in / on / at","say / tell","make / do","since / for"];
+let grammarMode = "micro";
+let microTopic = "Rastgele", microState = null;
+let patternTopic = "", patternState = null;
+let vocabExState = null;
+let examStyle = "cumle", examTone = "gunluk", examState = null;
+
+function renderGrammar(){
+  const el = $("#grammar");
+  el.innerHTML = `
+    <div class="gsub">
+      ${Object.keys(GRAMMAR_MODES).map(m => `<button class="${grammarMode===m?"active":""}" data-gmode="${m}">${GRAMMAR_MODES[m]}</button>`).join("")}
+    </div>
+    <div id="gbody"></div>`;
+  el.querySelectorAll("[data-gmode]").forEach(b => b.onclick = () => { grammarMode = b.dataset.gmode; renderGrammar(); });
+  if(grammarMode === "micro") renderMicro();
+  if(grammarMode === "pattern") renderPattern();
+  if(grammarMode === "vocab") renderVocabEx();
+  if(grammarMode === "exam") renderExam();
+}
+
+/* --- mini ders + karşılaştırma --- */
+function renderMicro(){
+  const el = $("#gbody");
+  el.innerHTML = `
+    <div class="gen" style="margin-bottom:14px">
+      <select id="microTopic">${MICRO_TOPICS.map(t=>`<option ${t===microTopic?"selected":""}>${t}</option>`).join("")}</select>
+      <button id="microBtn">Mini ders getir</button>
+    </div>
+    <div id="microContent">${microState ? microCardHtml() : `<div class="empty"><b>30 saniyelik mini ders</b>Bir konu seç ya da "Rastgele" bırak — kısa bir açıklama + 1 soru getireyim.</div>`}</div>`;
+  $("#microTopic").onchange = e => { microTopic = e.target.value; };
+  $("#microBtn").onclick = fetchMicro;
+  if(microState) bindMicroQuiz();
+}
+function microCardHtml(){
+  const r = microState;
+  return `
+    <div class="q">
+      <div class="qtext"><b style="font-family:var(--display);font-size:19px;display:block;margin-bottom:8px;color:var(--saffron)">${r.title}</b>${r.explanation}</div>
+      <div class="qtext" style="margin-top:14px">${r.question.sentence.replace("___","<b>_____</b>")}</div>
+      <div class="opts">${r.question.options.map(o=>`<button class="opt">${o}</button>`).join("")}</div>
+      <div class="hint" hidden>${r.question.tr}</div>
+    </div>`;
+}
+function bindMicroQuiz(){
+  const box = $("#microContent .q");
+  if(!box) return;
+  box.querySelectorAll(".opt").forEach(o => o.onclick = () => {
+    if(box.dataset.done) return;
+    box.dataset.done = "1";
+    box.querySelectorAll(".opt").forEach((b,i) => {
+      if(i === microState.question.answer) b.classList.add("right");
+      else if(b === o) b.classList.add("wrong");
+    });
+    box.querySelector(".hint").hidden = false;
+  });
+}
+async function fetchMicro(){
+  const btn = $("#microBtn"); btn.disabled = true; btn.textContent = "…";
+  $("#microContent").innerHTML = `<p class="loading">Mini ders hazırlanıyor…</p>`;
+  try{
+    const topicPrompt = microTopic === "Rastgele"
+      ? `${LANG_NAMES[LANG]} öğrenenlerin sıkça karıştırdığı bir dilbilgisi/kullanım çiftini sen seç`
+      : `"${microTopic}" konusunu işle`;
+    const r = await ask(`${LANG_NAMES[LANG]} dilinde, ${$("#level").value} seviyesine uygun, ${topicPrompt}. 30 saniyede okunabilecek kadar kısa ve öz ol.
+Sadece geçerli JSON döndür:
+{"title":"konu başlığı (örn. 'Since vs For')","explanation":"2-3 cümlelik kısa Türkçe açıklama, örneklerle","question":{"sentence":"boşluklu örnek cümle, boşluk ___ ile gösterilsin","options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi"}}`);
+    microState = r;
+    renderMicro();
+  }catch(err){ $("#microContent").innerHTML = `<p class="err">Mini ders getirilemedi: ${err.message}</p>`; }
+  btn.disabled = false; btn.textContent = "Mini ders getir";
+}
+
+/* --- kalıp (pattern) builder --- */
+function renderPattern(){
+  const el = $("#gbody");
+  el.innerHTML = `
+    <div class="gen" style="margin-bottom:14px">
+      <input id="patternTopicInput" placeholder="Kalıp konusu (serbest, boş bırakabilirsin)" value="${patternTopic}" style="flex:1;min-width:160px">
+      <button id="patternBtn">Kalıp getir</button>
+    </div>
+    <div id="patternContent">${patternState ? patternCardHtml() : `<div class="empty"><b>Dilbilgisi kalıpları</b>Bir kalıp getireyim, önce boşluk doldur, sonra kendi cümleni yaz.</div>`}</div>`;
+  $("#patternTopicInput").addEventListener("keydown", e => { if(e.key === "Enter") fetchPattern(); });
+  $("#patternBtn").onclick = fetchPattern;
+  if(patternState) bindPatternHandlers();
+}
+function patternCardHtml(){
+  const p = patternState;
+  return `
+    <div class="q">
+      <div class="qtext"><b style="font-family:var(--display);font-size:19px;display:block;margin-bottom:8px;color:var(--saffron)">${p.pattern}</b>${p.explanation}</div>
+      <div class="qtext" style="margin-top:14px">${p.fillSentence.replace("___","<b>_____</b>")}</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="fillInput" placeholder="Boşluğa ne gelmeli?" style="flex:1">
+        <button id="fillCheckBtn">Kontrol et</button>
+      </div>
+      <div id="fillResult"></div>
+      <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
+        <div class="score">şimdi kendi cümleni yaz</div>
+        <textarea id="patternSentence" placeholder="Bu kalıbı kullanarak bir cümle kur…"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="patternCheckBtn">Kontrol et</button>
+          <button class="ghost" id="patternVariantBtn">Başka örnek</button>
+        </div>
+        <div id="patternFb"></div>
+      </div>
+    </div>`;
+}
+function bindPatternHandlers(){
+  $("#fillCheckBtn").onclick = () => {
+    const val = $("#fillInput").value.trim().toLowerCase();
+    const answer = patternState.fillAnswer.trim().toLowerCase();
+    const correct = !!val && (val === answer || answer.includes(val) || val.includes(answer));
+    $("#fillResult").innerHTML = `<div class="feedback ${correct ? "" : "bad"}" style="margin-top:10px">
+      <div class="score">${correct ? "doğru!" : "doğru cevap: " + patternState.fillAnswer}</div>${patternState.fillTr}</div>`;
+  };
+  $("#patternCheckBtn").onclick = checkPatternSentence;
+  $("#patternVariantBtn").onclick = fetchPatternVariant;
+}
+async function fetchPattern(){
+  patternTopic = $("#patternTopicInput").value.trim();
+  const btn = $("#patternBtn"); btn.disabled = true; btn.textContent = "…";
+  $("#patternContent").innerHTML = `<p class="loading">Kalıp hazırlanıyor…</p>`;
+  try{
+    const r = await ask(`${LANG_NAMES[LANG]} dilinde, ${$("#level").value} seviyesine uygun ${patternTopic ? `"${patternTopic}" ile ilgili` : "öğrencilerin sık kullandığı"} bir dilbilgisi kalıbı seç (örn. "If I were you, I would...").
+Sadece geçerli JSON döndür:
+{"pattern":"kalıbın kendisi","explanation":"kalıbın ne zaman/nasıl kullanıldığına dair kısa Türkçe açıklama","fillSentence":"kalıbı kullanan, bir kısmı ___ ile boşluk bırakılmış örnek cümle","fillAnswer":"boşluğa gelmesi gereken doğru ifade","fillTr":"boşluklu cümlenin Türkçesi"}`);
+    patternState = r;
+    renderPattern();
+  }catch(err){ $("#patternContent").innerHTML = `<p class="err">Kalıp getirilemedi: ${err.message}</p>`; }
+  btn.disabled = false; btn.textContent = "Kalıp getir";
+}
+async function fetchPatternVariant(){
+  const btn = $("#patternVariantBtn"); btn.disabled = true; btn.textContent = "…";
+  try{
+    const r = await ask(`"${patternState.pattern}" kalıbını kullanan, ${$("#level").value} seviyesine uygun YENİ ve farklı bir örnek cümle üret (boşluklu).
+Sadece geçerli JSON döndür:
+{"fillSentence":"boşluklu yeni örnek cümle","fillAnswer":"boşluğa gelmesi gereken doğru ifade","fillTr":"cümlenin Türkçesi"}`);
+    Object.assign(patternState, r);
+    renderPattern();
+  }catch(err){ toast("Varyasyon getirilemedi: " + err.message); }
+  btn.disabled = false; btn.textContent = "Başka örnek";
+}
+async function checkPatternSentence(){
+  const s = $("#patternSentence").value.trim();
+  if(!s) return;
+  $("#patternFb").innerHTML = `<p class="loading">Değerlendiriliyor…</p>`;
+  try{
+    const r = await ask(`Bir Türk öğrenci "${patternState.pattern}" kalıbını kullanarak şu cümleyi kurdu: "${s}".
+Kalıbı doğru kullanmış mı, dilbilgisi ve doğallık açısından değerlendir. Türkçe, kısa ve öğretici geri bildirim ver.
+Sadece geçerli JSON döndür:
+{"score":"0-10 arası sayı","corrected":"düzeltilmiş cümle (gerekmiyorsa aynısı)","feedback":"1-3 cümlelik Türkçe açıklama"}`);
+    $("#patternFb").innerHTML = `
+      <div class="feedback ${Number(r.score) >= 7 ? "" : "bad"}">
+        <div class="score">puan ${r.score}/10</div>
+        <div style="font-family:var(--display);font-size:19px;margin-bottom:8px">${r.corrected}</div>
+        <div>${r.feedback}</div>
+      </div>`;
+  }catch(err){ $("#patternFb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+}
+
+/* --- kelime + dilbilgisi --- */
+function renderVocabEx(){
+  const el = $("#gbody");
+  const words = deck.filter(c => c.pos !== "kalıp");
+  if(!words.length){
+    el.innerHTML = `<div class="empty"><b>Önce kelime ekle</b>Bu mod destendeki kelimeleri dilbilgisi alıştırmasına çevirir.</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div id="vocabExContent">${vocabExState ? vocabExCardHtml() : `<div class="empty"><b>Kelime + Dilbilgisi</b>Destenden rastgele bir kelime alıp üzerinde dönüşüm alıştırması yaptırayım.</div>`}</div>
+    <button class="ghost" id="vocabExBtn" style="margin-top:10px">${vocabExState ? "Başka kelime" : "Başla"}</button>`;
+  $("#vocabExBtn").onclick = fetchVocabEx;
+  if(vocabExState) bindVocabExHandlers();
+}
+function vocabExCardHtml(){
+  const v = vocabExState;
+  return `
+    <div class="q">
+      <div class="score">kelime: <b style="color:var(--saffron)">${v.word}</b></div>
+      <div class="qtext" style="margin-top:6px">${v.base}<br><span style="opacity:.6;font-size:13px">${v.baseTr}</span></div>
+      <div style="margin-top:16px">
+        <div class="score">${v.task1}</div>
+        <textarea id="vocabTask1" style="min-height:60px"></textarea>
+      </div>
+      <div style="margin-top:14px">
+        <div class="score">${v.task2}</div>
+        <textarea id="vocabTask2" style="min-height:60px"></textarea>
+      </div>
+      <button id="vocabCheckBtn" style="margin-top:12px">Kontrol et</button>
+      <div id="vocabFb"></div>
+    </div>`;
+}
+function bindVocabExHandlers(){
+  $("#vocabCheckBtn").onclick = checkVocabEx;
+}
+async function fetchVocabEx(){
+  const words = deck.filter(c => c.pos !== "kalıp");
+  const w = words[Math.floor(Math.random()*words.length)];
+  const btn = $("#vocabExBtn"); btn.disabled = true; btn.textContent = "…";
+  $("#vocabExContent").innerHTML = `<p class="loading">Alıştırma hazırlanıyor…</p>`;
+  try{
+    const r = await ask(`"${w.word}" kelimesini kullanan, ${$("#level").value} seviyesine uygun basit bir ${LANG_NAMES[LANG]} cümle yaz. Sonra bu cümle üzerinde yapılacak 2 farklı dönüşüm görevi belirle (örn. edilgen/passive yapma, zaman/tense değiştirme, olumsuz yapma — her seferinde farklı görevler seç).
+Sadece geçerli JSON döndür:
+{"base":"kelimeyi içeren orijinal cümle","baseTr":"Türkçesi","task1":"1. görev, Türkçe kısa emir cümlesi (örn. 'Bu cümleyi edilgen yap')","task2":"2. görev, Türkçe kısa emir cümlesi"}`);
+    vocabExState = Object.assign({word: w.word}, r);
+    renderVocabEx();
+  }catch(err){ $("#vocabExContent").innerHTML = `<p class="err">Alıştırma getirilemedi: ${err.message}</p>`; }
+  btn.disabled = false; btn.textContent = vocabExState ? "Başka kelime" : "Başla";
+}
+async function checkVocabEx(){
+  const a1 = $("#vocabTask1").value.trim(), a2 = $("#vocabTask2").value.trim();
+  if(!a1 && !a2) return;
+  $("#vocabFb").innerHTML = `<p class="loading">Değerlendiriliyor…</p>`;
+  try{
+    const r = await ask(`Orijinal cümle: "${vocabExState.base}"
+Görev 1 (${vocabExState.task1}): öğrencinin cevabı: "${a1 || "(boş bırakıldı)"}"
+Görev 2 (${vocabExState.task2}): öğrencinin cevabı: "${a2 || "(boş bırakıldı)"}"
+Her görevi ayrı ayrı değerlendir. Türkçe, kısa ve öğretici geri bildirim ver.
+Sadece geçerli JSON döndür:
+{"task1":{"correct":true,"corrected":"...","feedback":"..."},"task2":{"correct":true,"corrected":"...","feedback":"..."}}`);
+    $("#vocabFb").innerHTML = `
+      <div class="feedback ${r.task1.correct ? "" : "bad"}" style="margin-top:12px">
+        <div class="score">görev 1</div>
+        <div style="font-family:var(--display);font-size:17px;margin-bottom:6px">${r.task1.corrected}</div>
+        <div>${r.task1.feedback}</div>
+      </div>
+      <div class="feedback ${r.task2.correct ? "" : "bad"}" style="margin-top:10px">
+        <div class="score">görev 2</div>
+        <div style="font-family:var(--display);font-size:17px;margin-bottom:6px">${r.task2.corrected}</div>
+        <div>${r.task2.feedback}</div>
+      </div>`;
+  }catch(err){ $("#vocabFb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+}
+
+/* --- sınav modu --- */
+function renderExam(){
+  const el = $("#gbody");
+  el.innerHTML = `
+    <div class="gen" style="margin-bottom:14px">
+      <label for="examStyle">Uzunluk</label>
+      <select id="examStyle">
+        <option value="cumle" ${examStyle==="cumle"?"selected":""}>Tek cümle</option>
+        <option value="paragraf" ${examStyle==="paragraf"?"selected":""}>Kısa paragraf</option>
+      </select>
+      <label for="examTone">Tarz</label>
+      <select id="examTone">
+        <option value="gunluk" ${examTone==="gunluk"?"selected":""}>Günlük</option>
+        <option value="resmi" ${examTone==="resmi"?"selected":""}>Resmi (IELTS/TOEFL tarzı)</option>
+      </select>
+      <button id="examBtn">Yeni metin</button>
+    </div>
+    <div id="examContent">${examState ? examCardHtml() : `<div class="empty"><b>Sınav Modu</b>Kasıtlı hata içeren bir metin getireyim, hataları bulup düzelt.</div>`}</div>`;
+  $("#examStyle").onchange = e => { examStyle = e.target.value; };
+  $("#examTone").onchange = e => { examTone = e.target.value; };
+  $("#examBtn").onclick = fetchExam;
+  if(examState) $("#examCheckBtn").onclick = checkExam;
+}
+function examCardHtml(){
+  const x = examState;
+  return `
+    <div class="q">
+      <div class="score">${x.hint}</div>
+      <div class="qtext" style="margin-top:8px">${x.text}</div>
+      <textarea id="examAnswer" placeholder="Düzeltilmiş halini buraya yaz…" style="margin-top:10px"></textarea>
+      <button id="examCheckBtn" style="margin-top:10px">Kontrol et</button>
+      <div id="examFb"></div>
+    </div>`;
+}
+async function fetchExam(){
+  const btn = $("#examBtn"); btn.disabled = true; btn.textContent = "…";
+  $("#examContent").innerHTML = `<p class="loading">Metin hazırlanıyor…</p>`;
+  try{
+    const lenPrompt = examStyle === "paragraf" ? "3-4 cümlelik kısa bir paragraf" : "tek bir cümle";
+    const tonePrompt = examTone === "resmi" ? "resmi/akademik (IELTS/TOEFL yazma sınavı tarzında)" : "günlük konuşma dilinde";
+    const r = await ask(`${LANG_NAMES[LANG]} dilinde, ${$("#level").value} seviyesine uygun, ${tonePrompt} ${lenPrompt} yaz. İçine kasıtlı olarak 2-4 dilbilgisi hatası yerleştir (öğrenci bunları bulup düzeltecek).
+Sadece geçerli JSON döndür:
+{"text":"hatalı metin","hint":"kaç hata olduğuna dair kısa Türkçe ipucu (örn. '3 hata var')"}`);
+    examState = r;
+    renderExam();
+  }catch(err){ $("#examContent").innerHTML = `<p class="err">Metin getirilemedi: ${err.message}</p>`; }
+  btn.disabled = false; btn.textContent = "Yeni metin";
+}
+async function checkExam(){
+  const a = $("#examAnswer").value.trim();
+  if(!a) return;
+  $("#examFb").innerHTML = `<p class="loading">Değerlendiriliyor…</p>`;
+  try{
+    const r = await ask(`Hatalı metin: "${examState.text}"
+Öğrencinin düzeltmesi: "${a}"
+Öğrencinin bulduğu/düzelttiği hataları değerlendir, kaçırdığı hata varsa belirt. Türkçe, kısa ve öğretici ol.
+Sadece geçerli JSON döndür:
+{"score":"0-10 arası sayı","corrected":"metnin doğru hali","feedback":"kısa Türkçe değerlendirme"}`);
+    $("#examFb").innerHTML = `
+      <div class="feedback ${Number(r.score) >= 7 ? "" : "bad"}" style="margin-top:10px">
+        <div class="score">puan ${r.score}/10</div>
+        <div style="font-family:var(--display);font-size:17px;margin-bottom:6px">${r.corrected}</div>
+        <div>${r.feedback}</div>
+      </div>`;
+  }catch(err){ $("#examFb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+}
+
 /* ---------- sekmeler ---------- */
 function renderTab(tab){
   if(tab === "study"){ revealed = false; grading = false; renderStudy(); }
@@ -927,10 +1238,11 @@ function renderTab(tab){
   if(tab === "quiz") buildQuiz();
   if(tab === "write") newPrompt();
   if(tab === "phrases") renderPhrases();
+  if(tab === "grammar") renderGrammar();
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
-  ["study","leech","deck","quiz","write","phrases"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
+  ["study","leech","deck","quiz","write","phrases","grammar"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
   renderTab(b.dataset.tab);
 });
 
