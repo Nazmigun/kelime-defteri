@@ -894,14 +894,34 @@ function newPrompt(){
       <div class="prompt-word" style="color:${posColor(target.pos)}">${target.word}</div>
       <div class="meta" style="--pos:${posColor(target.pos)};margin-bottom:14px">${target.pos} · ${target.tr}</div>
       <textarea id="sentence" placeholder="Cümleni buraya yaz…"></textarea>
-      <div style="display:flex;gap:8px;margin-top:10px">
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button id="checkBtn">Kontrol et</button>
+        <button class="ghost" id="suggestBtn">Aklıma cümle gelmiyor</button>
         <button class="ghost" id="skipBtn">Başka kelime</button>
       </div>
+      <div id="suggestion"></div>
       <div id="fb"></div>
     </div>`;
   $("#skipBtn").onclick = newPrompt;
   $("#checkBtn").onclick = check;
+  $("#suggestBtn").onclick = suggestSentence;
+}
+async function suggestSentence(){
+  const btn = $("#suggestBtn");
+  btn.disabled = true; btn.textContent = "…";
+  $("#suggestion").innerHTML = `<p class="loading">Örnek cümle hazırlanıyor…</p>`;
+  try{
+    const r = await ask(`"${target.word}" kelimesini kullanan, ${$("#level").value} seviyesine uygun basit ve doğal bir ${LANG_NAMES[LANG]} örnek cümle yaz.
+Sadece geçerli JSON döndür:
+{"sentence":"örnek cümle","tr":"cümlenin Türkçesi"}`);
+    $("#suggestion").innerHTML = `
+      <div class="feedback" style="margin-top:10px">
+        <div class="score">örnek</div>
+        <div style="font-family:var(--display);font-size:18px;margin-bottom:6px">${r.sentence}</div>
+        <div style="opacity:.7">${r.tr}</div>
+      </div>`;
+  }catch(err){ $("#suggestion").innerHTML = `<p class="err">Örnek getirilemedi: ${err.message}</p>`; }
+  btn.disabled = false; btn.textContent = "Aklıma cümle gelmiyor";
 }
 async function check(){
   const s = $("#sentence").value.trim();
