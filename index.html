@@ -55,20 +55,24 @@
   input:focus,select:focus,textarea:focus{border-color:var(--saffron);box-shadow:0 0 0 3px rgba(232,179,60,.18)}
   input::placeholder,textarea::placeholder{color:var(--muted)}
   button{font-family:var(--body);font-weight:600;font-size:14px;cursor:pointer;border-radius:10px;
-    padding:12px 18px;border:1px solid transparent;background:var(--saffron);color:#231708;
-    transition:transform .12s ease,filter .12s ease}
-  button:hover{filter:brightness(1.08)} button:active{transform:translateY(1px)}
-  button:disabled{opacity:.45;cursor:not-allowed}
+    padding:12px 18px;border:1px solid transparent;
+    background:linear-gradient(135deg,var(--saffron),color-mix(in srgb,var(--saffron) 70%,white));color:#231708;
+    transition:transform .12s ease,filter .12s ease,box-shadow .2s ease}
+  button:hover{filter:brightness(1.06);box-shadow:0 6px 20px color-mix(in srgb,var(--saffron) 45%,transparent)}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
   button.ghost{background:transparent;border-color:var(--line);color:var(--paper)}
-  button.ghost:hover{border-color:var(--saffron);filter:none}
+  button.ghost:hover{border-color:var(--saffron);filter:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--saffron) 18%,transparent)}
   :focus-visible{outline:2px solid var(--saffron);outline-offset:2px}
 
   .entry{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .entry input{flex:1;min-width:200px;font-size:17px}
-  .gear{display:none;padding:12px 14px;flex:none;font-size:16px}
-  .gen{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border:1px dashed var(--line);border-radius:12px;padding:10px;margin-bottom:14px}
+  .gear{display:block;padding:12px 14px;flex:none;font-size:16px}
+  .gen{display:none;gap:10px;flex-wrap:wrap;align-items:center;border:1px dashed var(--line);border-radius:12px;padding:10px;margin-bottom:14px}
   .gen label{font-family:var(--mono);font-size:11px;color:var(--paper-dim);text-transform:uppercase;letter-spacing:.08em}
+  .topbar.gen-open .gen{display:flex}
   .topbar.stuck .gen{display:none}
+  .topbar.stuck.gen-open .gen{display:flex}
 
   nav{display:flex;gap:2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
   nav button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;color:var(--paper-dim);font-weight:500;padding:10px 16px}
@@ -78,14 +82,18 @@
   main{padding-top:24px}
 
   .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-  .card{perspective:900px;height:150px;cursor:pointer}
+  .card{perspective:900px;height:150px;cursor:pointer;transition:transform .2s ease}
+  .card:hover{transform:scale(1.02)}
+  .card:hover .face{box-shadow:0 10px 28px rgba(0,0,0,.28)}
   .inner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d}
   .card.flipped .inner{transform:rotateY(180deg)}
   .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:12px;border:1px solid var(--line);
-    background:linear-gradient(180deg,var(--ink-3),var(--ink-2));padding:16px 16px 16px 22px;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--ink-3) 85%,transparent),color-mix(in srgb,var(--ink-2) 85%,transparent));
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    padding:16px 16px 16px 22px;transition:box-shadow .2s ease;
     display:flex;flex-direction:column;justify-content:space-between;text-align:left;overflow:hidden}
   .face::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--pos,var(--saffron))}
-  .back{transform:rotateY(180deg);background:linear-gradient(180deg,var(--back-a),var(--back-b))}
+  .back{transform:rotateY(180deg);background:linear-gradient(180deg,color-mix(in srgb,var(--back-a) 85%,transparent),color-mix(in srgb,var(--back-b) 85%,transparent))}
   .term{font-family:var(--display);font-size:26px;font-weight:600;line-height:1.05;letter-spacing:-.01em;margin-top:14px}
   .tr{font-family:var(--display);font-size:22px;font-weight:600;color:var(--saffron);line-height:1.1}
   .meta{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pos,var(--paper-dim))}
@@ -117,7 +125,9 @@
   .err{color:var(--rose);font-size:13px;margin-top:10px}
 
   .stage{position:relative;touch-action:pan-y}
-  .study{text-align:center;border:1px solid var(--line);border-radius:16px;background:var(--ink-2);
+  .study{text-align:center;border:1px solid var(--line);border-radius:16px;
+    background:color-mix(in srgb,var(--ink-2) 85%,transparent);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     padding:40px 24px;position:relative;overflow:hidden;user-select:none;
     transition:box-shadow .25s ease,border-color .25s ease}
   .study.grabbable{cursor:grab}
@@ -186,12 +196,10 @@
     .topbar.stuck h1{font-size:20px}
     .stats{font-size:10px;line-height:1.5;letter-spacing:.05em}
     .who{margin-top:2px}
-    .gear{display:block}
     .entry{gap:6px;margin-bottom:8px;flex-wrap:nowrap}
     .entry input{font-size:16px;padding:11px 12px;min-width:0}
     #addBtn{padding:11px 13px;font-size:13px;flex:none}
-    .gen{display:none;margin-bottom:10px}
-    .topbar.gen-open .gen,.topbar.stuck.gen-open .gen{display:flex}
+    .gen{margin-bottom:10px}
     .gen input,.gen select{flex:1;min-width:0;width:auto}
     nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
     nav::-webkit-scrollbar{display:none}
