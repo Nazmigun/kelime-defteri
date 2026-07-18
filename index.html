@@ -270,6 +270,7 @@
             <div class="langsw" id="langSwitch">
               <button type="button" data-lang="en">EN</button>
               <button type="button" data-lang="de">DE</button>
+              <button type="button" data-lang="zh">ZH</button>
             </div>
           </div>
           <div class="stats" id="stats"></div>
@@ -355,7 +356,7 @@ const THEME_KEY = "kelime-defteri:theme";
 let theme = localStorage.getItem(THEME_KEY) || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
 document.documentElement.setAttribute("data-theme", theme);
 const LANG_KEY = "kelime-defteri:lang";
-const LANG_NAMES = {en:"İngilizce", de:"Almanca"};
+const LANG_NAMES = {en:"İngilizce", de:"Almanca", zh:"Çince"};
 let LANG = localStorage.getItem(LANG_KEY) || "en";
 const LOCAL_KEY = "kelime-defteri:misafir";
 const POS = {isim:"var(--sky)",fiil:"var(--mint)","sıfat":"var(--saffron)",zarf:"var(--violet)",
@@ -453,7 +454,7 @@ function toast(msg){
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 2000);
 }
 
-const SPEECH_LOCALE = {en:"en-US", de:"de-DE"};
+const SPEECH_LOCALE = {en:"en-US", de:"de-DE", zh:"zh-CN"};
 function speak(text){
   if(!("speechSynthesis" in window)){ toast("Tarayıcın sesli okumayı desteklemiyor"); return; }
   speechSynthesis.cancel();
@@ -1366,7 +1367,7 @@ document.querySelectorAll("#langSwitch button").forEach(b => b.onclick = () => s
 syncLangSwitch();
 
 /* ---------- başlık animasyonu ---------- */
-const APP_TITLE = {en:["Word","Notebook"], de:["Vokabel","Heft"]};
+const APP_TITLE = {en:["Word","Notebook"], de:["Vokabel","Heft"], zh:["生词","本"]};
 function titleWords(){ return APP_TITLE[LANG] || ["Kelime","Defteri"]; }
 function renderTitleStatic(){
   const [a,b] = titleWords();
@@ -1405,7 +1406,7 @@ const TUTORIAL_SLIDES = [
   {icon:"✍️", title:"Cümle kur", text:"Verilen kelimeyle bir cümle kur, AI değerlendirsin. Aklına bir şey gelmezse 'Aklıma cümle gelmiyor' butonuyla örnek isteyebilirsin."},
   {icon:"💬", title:"Kalıplar", text:"Bir durum yaz (örn. restoranda) — o durumda anadili konuşanların gerçekten kullandığı günlük kalıp cümleleri getireyim."},
   {icon:"📚", title:"Dilbilgisi", text:"Mini dersler, kalıp (pattern) alıştırmaları, kelime+dilbilgisi kombinasyonları ve sınav modu burada."},
-  {icon:"🌐", title:"Dil ve tema", text:"Sağ üstten öğrenmek istediğin dili (İngilizce/Almanca) ve açık/koyu temayı değiştirebilirsin."}
+  {icon:"🌐", title:"Dil ve tema", text:"Sağ üstten öğrenmek istediğin dili (İngilizce/Almanca/Çince) ve açık/koyu temayı değiştirebilirsin."}
 ];
 let tutStep = 0;
 function openTutorial(){
