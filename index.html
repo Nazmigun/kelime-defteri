@@ -140,6 +140,7 @@
   .study.glow-ok{border-color:var(--mint);box-shadow:0 0 0 2px var(--mint),0 0 46px rgba(121,210,166,.45)}
   .study.glow-no{border-color:var(--rose);box-shadow:0 0 0 2px var(--rose),0 0 46px rgba(228,114,140,.45)}
   .study .word{font-family:var(--display);font-size:clamp(38px,8vw,64px);font-weight:900;letter-spacing:-.03em;line-height:1}
+  .pinyin{font-family:var(--mono);font-size:.4em;font-weight:400;color:var(--paper-dim);letter-spacing:.02em;vertical-align:middle;margin-left:2px}
   .study .answer{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
   .study .answer .tr{font-size:28px}
   .study .answer .ex{margin-top:10px;font-size:14px;line-height:1.5}
@@ -357,6 +358,14 @@ let theme = localStorage.getItem(THEME_KEY) || (matchMedia("(prefers-color-schem
 document.documentElement.setAttribute("data-theme", theme);
 const LANG_KEY = "kelime-defteri:lang";
 const LANG_NAMES = {en:"İngilizce", de:"Almanca", zh:"Çince"};
+function wordFieldHint(){
+  if(LANG === "zh") return "kelimenin sadece Hanzi (Çince karakter) hali; pinyin, telaffuz ya da başka hiçbir Latin harf ekleme";
+  return "kelimenin düzeltilmiş hali";
+}
+function artikelFieldHint(){
+  if(LANG === "zh") return "kelimenin pinyin okunuşu; her heceyi ton işaretiyle TEK bir Unicode karakter olarak yaz (ā/á/ǎ/à, ē/é/ě/è, ī/í/ǐ/ì, ō/ó/ǒ/ò, ū/ú/ǔ/ù, ǖ/ǘ/ǚ/ǜ gibi önceden birleşik/precomposed karakterler), harf ile ton işaretini asla ayrı yazma ya da aralarına boşluk koyma, heceler arasında da boşluk bırakma (örn. \"yǒu\", \"xièxie\")";
+  return "isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null";
+}
 let LANG = localStorage.getItem(LANG_KEY) || "en";
 const LOCAL_KEY = "kelime-defteri:misafir";
 const POS = {isim:"var(--sky)",fiil:"var(--mint)","sıfat":"var(--saffron)",zarf:"var(--violet)",
@@ -463,6 +472,16 @@ function speak(text){
   u.rate = 0.95;
   speechSynthesis.speak(u);
 }
+// Çince'de artikel alanı pinyin taşır: ekranda kelimenin yanında gösterilir ama
+// hem hanzi hem pinyin'i art arda okumak TTS'in kelimeyi iki kez seslendirmesine yol açtığı için
+// seslendirme sadece hanzi ile yapılır.
+function wordLabel(c){
+  if(c.lang === "zh") return c.artikel ? `${c.word} <span class="pinyin">${c.artikel}</span>` : c.word;
+  return `${c.artikel ? c.artikel + " " : ""}${c.word}`;
+}
+function speakText(c){
+  return c.lang === "zh" ? c.word : (c.artikel ? c.artikel + " " : "") + c.word;
+}
 
 async function ask(prompt){
   const res = await fetch("/api/ask", {
@@ -523,7 +542,7 @@ function renderStudy(){
         <div class="stamp ok" id="stampOk">öğrendim</div>
         <div class="stamp no" id="stampNo">tekrar sor</div>
         <div class="meta" style="--pos:${posColor(current.pos)};margin-bottom:12px">${current.pos} · ${current.level||""}</div>
-        <div class="word" style="color:${posColor(current.pos)}">${current.artikel ? current.artikel + " " : ""}${current.word} <button class="speak speak-lg" id="studySpeak" aria-label="Seslendir">🔊</button></div>
+        <div class="word" style="color:${posColor(current.pos)}">${wordLabel(current)} <button class="speak speak-lg" id="studySpeak" aria-label="Seslendir">🔊</button></div>
         ${revealed ? `
           <div class="answer">
             <div class="tr">${current.tr}</div>
@@ -543,7 +562,7 @@ function renderStudy(){
 
   if(!revealed) $("#reveal").onclick = () => { revealed = true; renderStudy(); };
   el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => grade(+b.dataset.g));
-  $("#studySpeak").onclick = () => speak((current.artikel ? current.artikel + " " : "") + current.word);
+  $("#studySpeak").onclick = () => speak(speakText(current));
   if(canSwipe) enableSwipe();
 }
 
@@ -593,7 +612,7 @@ function renderLeech(){
       <div class="study" id="lCardStage">
         <div class="lapses" style="position:static;display:inline-flex;margin-bottom:12px">⚠ ${c.lapses} kez zorlandın</div>
         <div class="meta" style="--pos:${posColor(c.pos)};margin-bottom:12px">${c.pos} · ${c.level||""}</div>
-        <div class="word" style="color:${posColor(c.pos)}">${c.artikel ? c.artikel + " " : ""}${c.word}</div>
+        <div class="word" style="color:${posColor(c.pos)}">${wordLabel(c)}</div>
         ${leechRevealed ? `
           <div class="answer">
             <div class="tr">${c.tr}</div>
@@ -751,7 +770,7 @@ function renderDeck(){
         <div class="face" style="--pos:${posColor(w.pos)}">
           <button class="del" data-del="${w.id}" aria-label="Sil">×</button>
           ${w.lapses ? `<div class="lapses">⚠ ${w.lapses}</div>` : ""}
-          <div class="term">${w.artikel ? w.artikel + " " : ""}${w.word} <button class="speak" data-speak="${w.id}" aria-label="Seslendir">🔊</button></div>
+          <div class="term">${wordLabel(w)} <button class="speak" data-speak="${w.id}" aria-label="Seslendir">🔊</button></div>
           <div>
             <div class="meta">${w.pos} · ${w.level||""}</div>
             <div class="due ${w.due <= Date.now() ? "now":""}">tekrar: ${dueLabel(w)}</div>
@@ -783,7 +802,7 @@ $("#deck").addEventListener("click", async e => {
   const spk = e.target.closest("[data-speak]");
   if(spk){
     const c = deck.find(x => x.id === spk.dataset.speak);
-    if(c) speak((c.artikel ? c.artikel + " " : "") + c.word);
+    if(c) speak(speakText(c));
     return;
   }
   const del = e.target.closest("[data-del]");
@@ -819,11 +838,11 @@ async function addWord(){
     if(toAdd.length === 1){
       cards = [await ask(`"${toAdd[0]}" kelimesi için ${LANG_NAMES[LANG]} dilinde bir dil öğrenme kartı hazırla.
 Sadece geçerli JSON döndür, başka hiçbir şey yazma:
-{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`)];
+{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"${artikelFieldHint()}","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`)];
     }else{
       cards = await ask(`Aşağıdaki ${LANG_NAMES[LANG]} kelime/ifadelerin her biri için ayrı bir dil öğrenme kartı hazırla: ${toAdd.join(", ")}.
 Girilen sırayla, her kelime için bir obje olacak şekilde sadece geçerli JSON dizisi döndür:
-[{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}]`);
+[{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"${artikelFieldHint()}","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}]`);
     }
     const inserted = cards.length > 1 ? await store.insertMany(cards.map(freshCard)) : [await store.insert(freshCard(cards[0]))];
     deck = inserted.concat(deck);
@@ -846,7 +865,7 @@ $("#genBtn").onclick = async () => {
     const out = await ask(`${$("#level").value} seviyesinde, ${topic ? `"${topic}" konusuyla ilgili ` : ""}en sık kullanılan ${$("#howmany").value} ${LANG_NAMES[LANG]} kelime seç.
 Şu kelimeleri tekrar etme: ${deck.map(d=>d.word).join(", ") || "yok"}.
 Sadece geçerli JSON dizisi döndür:
-[{"word":"","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"","exampleTr":""}]`);
+[{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","artikel":"${artikelFieldHint()}","example":"","exampleTr":""}]`);
     deck = (await store.insertMany(out.map(freshCard))).concat(deck);
     renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
