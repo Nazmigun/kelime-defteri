@@ -262,7 +262,7 @@
         <button id="toLoginBtn">Giriş yap</button>
       </div>
       <div class="entry">
-        <input id="wordInput" placeholder="Bir kelime yaz ve Enter'a bas" autocomplete="off">
+        <input id="wordInput" placeholder="Kelime yaz (birden fazlaysa virgülle ayır) ve Enter'a bas" autocomplete="off">
         <button class="ghost gear" id="gearBtn" aria-label="Üretme ayarları">⚙</button>
         <button id="addBtn">Karta çevir</button>
       </div>
@@ -754,20 +754,33 @@ $("#deck").addEventListener("keydown", e => {
 
 /* ---------- kelime ekleme ---------- */
 async function addWord(){
-  const word = $("#wordInput").value.trim();
-  if(!word) return;
-  if(deck.some(d => d.word.toLowerCase() === word.toLowerCase())){ toast("Bu kelime zaten defterinde"); return; }
+  const raw = $("#wordInput").value.trim();
+  if(!raw) return;
+  const words = [...new Set(raw.split(",").map(w => w.trim()).filter(Boolean))];
+  if(!words.length) return;
+  const existing = new Set(deck.map(d => d.word.toLowerCase()));
+  const toAdd = words.filter(w => !existing.has(w.toLowerCase()));
+  const skipped = words.length - toAdd.length;
+  if(!toAdd.length){ toast("Bu kelime(ler) zaten defterinde"); return; }
   $("#addBtn").disabled = true; $("#addBtn").textContent = "…";
   try{
-    const w = await ask(`"${word}" kelimesi için ${LANG_NAMES[LANG]} dilinde bir dil öğrenme kartı hazırla.
+    let cards;
+    if(toAdd.length === 1){
+      cards = [await ask(`"${toAdd[0]}" kelimesi için ${LANG_NAMES[LANG]} dilinde bir dil öğrenme kartı hazırla.
 Sadece geçerli JSON döndür, başka hiçbir şey yazma:
-{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`);
-    deck.unshift(await store.insert(freshCard(w)));
+{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`)];
+    }else{
+      cards = await ask(`Aşağıdaki ${LANG_NAMES[LANG]} kelime/ifadelerin her biri için ayrı bir dil öğrenme kartı hazırla: ${toAdd.join(", ")}.
+Girilen sırayla, her kelime için bir obje olacak şekilde sadece geçerli JSON dizisi döndür:
+[{"word":"kelimenin düzeltilmiş hali","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"isimse ve dilde belirli tanımlık varsa (örn. Almanca der/die/das), yoksa null","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}]`);
+    }
+    const inserted = cards.length > 1 ? await store.insertMany(cards.map(freshCard)) : [await store.insert(freshCard(cards[0]))];
+    deck = inserted.concat(deck);
     $("#wordInput").value = "";
     renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
-    toast(w.word + " eklendi");
-  }catch(err){ alert("Kart oluşturulamadı: " + err.message); }
+    toast(`${inserted.length} kelime eklendi` + (skipped ? ` · ${skipped} tanesi zaten destede` : ""));
+  }catch(err){ alert("Kart(lar) oluşturulamadı: " + err.message); }
   $("#addBtn").disabled = false; $("#addBtn").textContent = "Karta çevir";
 }
 $("#addBtn").onclick = addWord;
