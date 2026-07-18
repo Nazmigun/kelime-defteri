@@ -175,6 +175,8 @@
   .gsub button{background:transparent;border:1px solid var(--line);color:var(--paper-dim);font-size:13px;padding:8px 14px;border-radius:20px;font-weight:500}
   .gsub button.active{background:var(--saffron);color:#231708;border-color:var(--saffron)}
   .gsub button:hover{filter:none;border-color:var(--saffron)}
+  .mode-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:16px}
+  .mode-bar label{font-family:var(--mono);font-size:11px;color:var(--paper-dim);text-transform:uppercase;letter-spacing:.08em}
 
   .gate{max-width:380px;margin:6vh auto 0;text-align:center;display:flex;flex-direction:column;gap:14px}
   .gate .lead{color:var(--paper-dim);line-height:1.6;margin:0 0 8px}
@@ -973,11 +975,12 @@ function renderGrammar(){
 function renderMicro(){
   const el = $("#gbody");
   el.innerHTML = `
-    <div class="gen" style="margin-bottom:14px">
+    <div class="mode-bar">
+      <label for="microTopic">Konu</label>
       <select id="microTopic">${MICRO_TOPICS.map(t=>`<option ${t===microTopic?"selected":""}>${t}</option>`).join("")}</select>
-      <button id="microBtn">Mini ders getir</button>
+      <button id="microBtn">Mini ders getir →</button>
     </div>
-    <div id="microContent">${microState ? microCardHtml() : `<div class="empty"><b>30 saniyelik mini ders</b>Bir konu seç ya da "Rastgele" bırak — kısa bir açıklama + 1 soru getireyim.</div>`}</div>`;
+    <div id="microContent">${microState ? microCardHtml() : `<div class="empty"><b>30 saniyelik mini ders</b>Bir konu seç (ya da "Rastgele" bırak) ve yukarıdaki <b>"Mini ders getir"</b> butonuna bas — kısa bir açıklama + 1 soru getireyim.</div>`}</div>`;
   $("#microTopic").onchange = e => { microTopic = e.target.value; };
   $("#microBtn").onclick = fetchMicro;
   if(microState) bindMicroQuiz();
@@ -1018,18 +1021,19 @@ Sadece geçerli JSON döndür:
     microState = r;
     renderMicro();
   }catch(err){ $("#microContent").innerHTML = `<p class="err">Mini ders getirilemedi: ${err.message}</p>`; }
-  btn.disabled = false; btn.textContent = "Mini ders getir";
+  btn.disabled = false; btn.textContent = "Mini ders getir →";
 }
 
 /* --- kalıp (pattern) builder --- */
 function renderPattern(){
   const el = $("#gbody");
   el.innerHTML = `
-    <div class="gen" style="margin-bottom:14px">
-      <input id="patternTopicInput" placeholder="Kalıp konusu (serbest, boş bırakabilirsin)" value="${patternTopic}" style="flex:1;min-width:160px">
-      <button id="patternBtn">Kalıp getir</button>
+    <div class="mode-bar">
+      <label for="patternTopicInput">Konu (opsiyonel)</label>
+      <input id="patternTopicInput" placeholder="ör. şart cümleleri, boş da bırakabilirsin" value="${patternTopic}" style="flex:1;min-width:160px">
+      <button id="patternBtn">Kalıp getir →</button>
     </div>
-    <div id="patternContent">${patternState ? patternCardHtml() : `<div class="empty"><b>Dilbilgisi kalıpları</b>Bir kalıp getireyim, önce boşluk doldur, sonra kendi cümleni yaz.</div>`}</div>`;
+    <div id="patternContent">${patternState ? patternCardHtml() : `<div class="empty"><b>Dilbilgisi kalıpları</b>İstersen bir konu yaz, istemezsen boş bırak — yukarıdaki <b>"Kalıp getir"</b> butonuna bas. Önce boşluk doldur, sonra kendi cümleni yaz.</div>`}</div>`;
   $("#patternTopicInput").addEventListener("keydown", e => { if(e.key === "Enter") fetchPattern(); });
   $("#patternBtn").onclick = fetchPattern;
   if(patternState) bindPatternHandlers();
@@ -1078,7 +1082,7 @@ Sadece geçerli JSON döndür:
     patternState = r;
     renderPattern();
   }catch(err){ $("#patternContent").innerHTML = `<p class="err">Kalıp getirilemedi: ${err.message}</p>`; }
-  btn.disabled = false; btn.textContent = "Kalıp getir";
+  btn.disabled = false; btn.textContent = "Kalıp getir →";
 }
 async function fetchPatternVariant(){
   const btn = $("#patternVariantBtn"); btn.disabled = true; btn.textContent = "…";
@@ -1187,7 +1191,7 @@ Sadece geçerli JSON döndür:
 function renderExam(){
   const el = $("#gbody");
   el.innerHTML = `
-    <div class="gen" style="margin-bottom:14px">
+    <div class="mode-bar">
       <label for="examStyle">Uzunluk</label>
       <select id="examStyle">
         <option value="cumle" ${examStyle==="cumle"?"selected":""}>Tek cümle</option>
@@ -1198,9 +1202,9 @@ function renderExam(){
         <option value="gunluk" ${examTone==="gunluk"?"selected":""}>Günlük</option>
         <option value="resmi" ${examTone==="resmi"?"selected":""}>Resmi (IELTS/TOEFL tarzı)</option>
       </select>
-      <button id="examBtn">Yeni metin</button>
+      <button id="examBtn">Yeni metin →</button>
     </div>
-    <div id="examContent">${examState ? examCardHtml() : `<div class="empty"><b>Sınav Modu</b>Kasıtlı hata içeren bir metin getireyim, hataları bulup düzelt.</div>`}</div>`;
+    <div id="examContent">${examState ? examCardHtml() : `<div class="empty"><b>Sınav Modu</b>Uzunluk ve tarz seç, sonra yukarıdaki <b>"Yeni metin"</b> butonuna bas — kasıtlı hata içeren bir metin getireyim, hataları bulup düzelt.</div>`}</div>`;
   $("#examStyle").onchange = e => { examStyle = e.target.value; };
   $("#examTone").onchange = e => { examTone = e.target.value; };
   $("#examBtn").onclick = fetchExam;
@@ -1229,7 +1233,7 @@ Sadece geçerli JSON döndür:
     examState = r;
     renderExam();
   }catch(err){ $("#examContent").innerHTML = `<p class="err">Metin getirilemedi: ${err.message}</p>`; }
-  btn.disabled = false; btn.textContent = "Yeni metin";
+  btn.disabled = false; btn.textContent = "Yeni metin →";
 }
 async function checkExam(){
   const a = $("#examAnswer").value.trim();
