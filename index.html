@@ -31,9 +31,10 @@
   .topbar.stuck{border-bottom-color:var(--line)}
   header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
   h1{font-family:var(--display);font-weight:900;font-size:clamp(30px,5vw,52px);line-height:.95;margin:0;
-    letter-spacing:-.02em;transition:font-size .2s ease}
+    letter-spacing:-.02em;transition:font-size .2s ease;border-left:2px solid transparent;padding-left:0}
   .topbar.stuck h1{font-size:clamp(22px,3vw,30px)}
   h1 em{font-style:italic;font-weight:400;color:var(--saffron)}
+  h1.typing{border-left-color:var(--saffron);padding-left:6px}
   .controls-row{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:6px}
   .langsw{display:flex;gap:4px}
   .langsw button{background:transparent;border:1px solid var(--line);color:var(--paper-dim);font-family:var(--mono);
@@ -102,6 +103,9 @@
   .ex{font-size:12px;color:var(--paper-dim);line-height:1.4}
   .del{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:15px;padding:2px 6px;border-radius:6px}
   .del:hover{color:var(--rose);filter:none}
+  .speak{background:none;border:none;color:var(--paper-dim);cursor:pointer;font-size:14px;padding:2px 5px;margin-left:6px;border-radius:6px;vertical-align:middle;line-height:1}
+  .speak:hover{color:var(--saffron);filter:none}
+  .speak-lg{font-size:24px;margin-left:12px}
   .bar{position:absolute;left:7px;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06)}
   .bar i{display:block;height:100%;background:var(--mint)}
 
@@ -194,6 +198,20 @@
     padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--paper-dim)}
   .guest-bar button{padding:8px 14px;font-size:13px}
 
+  .tut-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+  .tut-card{background:var(--ink-2);border:1px solid var(--line);border-radius:16px;padding:28px;max-width:420px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative}
+  .tut-close{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--paper-dim);font-size:18px;padding:4px 8px;border-radius:6px}
+  .tut-close:hover{color:var(--rose);filter:none}
+  .tut-icon{font-size:38px;margin-bottom:12px}
+  .tut-title{font-family:var(--display);font-size:21px;font-weight:600;margin-bottom:8px}
+  .tut-text{color:var(--paper-dim);line-height:1.6;font-size:14px}
+  .tut-nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
+  .tut-dots{display:flex;gap:6px}
+  .tut-dots span{width:6px;height:6px;border-radius:50%;background:var(--line);display:inline-block;transition:width .2s ease}
+  .tut-dots span.active{background:var(--saffron);width:16px;border-radius:4px}
+
   /* ---------- mobil ---------- */
   @media (max-width:640px){
     .wrap{padding:0 14px 40px}
@@ -244,9 +262,10 @@
   <div id="app" hidden>
     <div class="topbar" id="topbar">
       <header>
-        <h1>Kelime <em>Defteri</em></h1>
+        <h1 id="appTitle">Kelime <em>Defteri</em></h1>
         <div>
           <div class="controls-row">
+            <button type="button" class="theme-toggle" id="tutBtn" aria-label="Nasıl kullanılır?">?</button>
             <button type="button" class="theme-toggle" id="themeToggle" aria-label="Temayı değiştir"></button>
             <div class="langsw" id="langSwitch">
               <button type="button" data-lang="en">EN</button>
@@ -298,6 +317,20 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="tut-overlay" id="tutorial" hidden>
+  <div class="tut-card">
+    <button class="tut-close" id="tutClose" aria-label="Kapat">×</button>
+    <div id="tutBody"></div>
+    <div class="tut-nav">
+      <div class="tut-dots" id="tutDots"></div>
+      <div style="display:flex;gap:8px">
+        <button class="ghost" id="tutPrev">Geri</button>
+        <button id="tutNext">İleri →</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ============ AYARLAR — Supabase → Settings ============ */
@@ -420,6 +453,16 @@ function toast(msg){
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 2000);
 }
 
+const SPEECH_LOCALE = {en:"en-US", de:"de-DE"};
+function speak(text){
+  if(!("speechSynthesis" in window)){ toast("Tarayıcın sesli okumayı desteklemiyor"); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = SPEECH_LOCALE[LANG] || "en-US";
+  u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+
 async function ask(prompt){
   const res = await fetch("/api/ask", {
     method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ prompt })
@@ -479,7 +522,7 @@ function renderStudy(){
         <div class="stamp ok" id="stampOk">öğrendim</div>
         <div class="stamp no" id="stampNo">tekrar sor</div>
         <div class="meta" style="--pos:${posColor(current.pos)};margin-bottom:12px">${current.pos} · ${current.level||""}</div>
-        <div class="word" style="color:${posColor(current.pos)}">${current.artikel ? current.artikel + " " : ""}${current.word}</div>
+        <div class="word" style="color:${posColor(current.pos)}">${current.artikel ? current.artikel + " " : ""}${current.word} <button class="speak speak-lg" id="studySpeak" aria-label="Seslendir">🔊</button></div>
         ${revealed ? `
           <div class="answer">
             <div class="tr">${current.tr}</div>
@@ -499,6 +542,7 @@ function renderStudy(){
 
   if(!revealed) $("#reveal").onclick = () => { revealed = true; renderStudy(); };
   el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => grade(+b.dataset.g));
+  $("#studySpeak").onclick = () => speak((current.artikel ? current.artikel + " " : "") + current.word);
   if(canSwipe) enableSwipe();
 }
 
@@ -706,7 +750,7 @@ function renderDeck(){
         <div class="face" style="--pos:${posColor(w.pos)}">
           <button class="del" data-del="${w.id}" aria-label="Sil">×</button>
           ${w.lapses ? `<div class="lapses">⚠ ${w.lapses}</div>` : ""}
-          <div class="term">${w.artikel ? w.artikel + " " : ""}${w.word}</div>
+          <div class="term">${w.artikel ? w.artikel + " " : ""}${w.word} <button class="speak" data-speak="${w.id}" aria-label="Seslendir">🔊</button></div>
           <div>
             <div class="meta">${w.pos} · ${w.level||""}</div>
             <div class="due ${w.due <= Date.now() ? "now":""}">tekrar: ${dueLabel(w)}</div>
@@ -735,6 +779,12 @@ function renderDeck(){
   }
 }
 $("#deck").addEventListener("click", async e => {
+  const spk = e.target.closest("[data-speak]");
+  if(spk){
+    const c = deck.find(x => x.id === spk.dataset.speak);
+    if(c) speak((c.artikel ? c.artikel + " " : "") + c.word);
+    return;
+  }
   const del = e.target.closest("[data-del]");
   if(del){
     const id = del.dataset.del;
@@ -1305,6 +1355,7 @@ async function switchLang(l){
   LANG = l;
   localStorage.setItem(LANG_KEY, l);
   syncLangSwitch();
+  playTitleTypewriter();
   if($("#app").hidden) return;
   deck = await store.load();
   renderStats();
@@ -1313,6 +1364,76 @@ async function switchLang(l){
 }
 document.querySelectorAll("#langSwitch button").forEach(b => b.onclick = () => switchLang(b.dataset.lang));
 syncLangSwitch();
+
+/* ---------- başlık animasyonu ---------- */
+const APP_TITLE = {en:["Word","Notebook"], de:["Vokabel","Heft"]};
+function titleWords(){ return APP_TITLE[LANG] || ["Kelime","Defteri"]; }
+function renderTitleStatic(){
+  const [a,b] = titleWords();
+  $("#appTitle").innerHTML = `${a} <em>${b}</em>`;
+}
+let titleTimer = null;
+function playTitleTypewriter(){
+  const [a,b] = titleWords();
+  const full = `${a} ${b}`;
+  const el = $("#appTitle");
+  el.classList.add("typing");
+  let i = full.length;
+  el.textContent = "";
+  clearInterval(titleTimer);
+  titleTimer = setInterval(() => {
+    i--;
+    el.textContent = full.slice(i);
+    if(i <= 0){
+      clearInterval(titleTimer);
+      el.classList.remove("typing");
+      renderTitleStatic();
+    }
+  }, 70);
+}
+renderTitleStatic();
+setInterval(playTitleTypewriter, 45000);
+
+/* ---------- tanıtım turu ---------- */
+const TUTORIAL_KEY = "kelime-defteri:tutorial-seen";
+const TUTORIAL_SLIDES = [
+  {icon:"📝", title:"Kelime ekle", text:"Üstteki kutuya bir kelime yaz (birden fazlaysa virgülle ayır) ve Enter'a bas — AI senin için çeviri, örnek cümle ve seviye içeren bir kart oluşturur."},
+  {icon:"🔁", title:"Tekrar", text:"Aralıklı tekrar burada işler. Kartı çevirip cevabı gör, ne kadar zorlandığını işaretle — sağa kaydırırsan 'öğrendim' der, sola kaydırırsan tekrar sorulur."},
+  {icon:"⚠️", title:"Zorlandıklarım", text:"En az 2 kez 'Bilmiyorum' dediğin kelimeler burada birikir; normal sırayı beklemeden ekstra pratik yapabilirsin."},
+  {icon:"🗂️", title:"Deste", text:"Tüm kartların burada. Filtreleyebilir, en çok zorlandıklarına göre sıralayabilir, kartlara tıklayıp çevirebilir, 🔊 ile telaffuzunu dinleyebilirsin."},
+  {icon:"❓", title:"Alıştırma", text:"Destendeki kelimelerle otomatik boşluk doldurma testi üretilir."},
+  {icon:"✍️", title:"Cümle kur", text:"Verilen kelimeyle bir cümle kur, AI değerlendirsin. Aklına bir şey gelmezse 'Aklıma cümle gelmiyor' butonuyla örnek isteyebilirsin."},
+  {icon:"💬", title:"Kalıplar", text:"Bir durum yaz (örn. restoranda) — o durumda anadili konuşanların gerçekten kullandığı günlük kalıp cümleleri getireyim."},
+  {icon:"📚", title:"Dilbilgisi", text:"Mini dersler, kalıp (pattern) alıştırmaları, kelime+dilbilgisi kombinasyonları ve sınav modu burada."},
+  {icon:"🌐", title:"Dil ve tema", text:"Sağ üstten öğrenmek istediğin dili (İngilizce/Almanca) ve açık/koyu temayı değiştirebilirsin."}
+];
+let tutStep = 0;
+function openTutorial(){
+  tutStep = 0;
+  $("#tutorial").hidden = false;
+  renderTutorialStep();
+}
+function closeTutorial(){
+  $("#tutorial").hidden = true;
+  localStorage.setItem(TUTORIAL_KEY, "1");
+}
+function renderTutorialStep(){
+  const s = TUTORIAL_SLIDES[tutStep];
+  $("#tutBody").innerHTML = `
+    <div class="tut-icon">${s.icon}</div>
+    <div class="tut-title">${s.title}</div>
+    <div class="tut-text">${s.text}</div>`;
+  $("#tutDots").innerHTML = TUTORIAL_SLIDES.map((_, i) => `<span class="${i === tutStep ? "active" : ""}"></span>`).join("");
+  $("#tutPrev").disabled = tutStep === 0;
+  $("#tutNext").textContent = tutStep === TUTORIAL_SLIDES.length - 1 ? "Anladım, başla" : "İleri →";
+}
+$("#tutClose").onclick = closeTutorial;
+$("#tutBtn").onclick = openTutorial;
+$("#tutPrev").onclick = () => { tutStep = Math.max(0, tutStep - 1); renderTutorialStep(); };
+$("#tutNext").onclick = () => {
+  if(tutStep === TUTORIAL_SLIDES.length - 1){ closeTutorial(); return; }
+  tutStep++; renderTutorialStep();
+};
 
 /* ---------- giriş ---------- */
 function showGate(){ guest = false; $("#gate").hidden = false; $("#app").hidden = true; }
@@ -1323,6 +1444,7 @@ async function showApp(){
   deck = await store.load();
   revealed = false; grading = false;
   renderStats(); renderStudy(); renderDeck();
+  if(!localStorage.getItem(TUTORIAL_KEY)) openTutorial();
 }
 $("#googleBtn").onclick = () => sb.auth.signInWithOAuth({
   provider: "google", options: { redirectTo: window.location.origin }
