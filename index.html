@@ -285,7 +285,7 @@
         <button id="toLoginBtn">Giriş yap</button>
       </div>
       <div class="entry">
-        <input id="wordInput" placeholder="Kelime yaz (birden fazlaysa virgülle ayır) ve Enter'a bas" autocomplete="off">
+        <input id="wordInput" placeholder="Kelime veya cümle/kalıp yaz (birden fazlaysa virgülle ayır) ve Enter'a bas" autocomplete="off">
         <button class="ghost gear" id="gearBtn" aria-label="Üretme ayarları">⚙</button>
         <button id="addBtn">Karta çevir</button>
       </div>
@@ -361,8 +361,8 @@ document.documentElement.setAttribute("data-theme", theme);
 const LANG_KEY = "kelime-defteri:lang";
 const LANG_NAMES = {en:"İngilizce", de:"Almanca", fr:"Fransızca", zh:"Çince"};
 function wordFieldHint(){
-  if(LANG === "zh") return "kelimenin sadece Hanzi (Çince karakter) hali; pinyin, telaffuz ya da başka hiçbir Latin harf ekleme";
-  return "kelimenin düzeltilmiş hali";
+  if(LANG === "zh") return "girdinin sadece Hanzi (Çince karakter) hali; pinyin veya Latin harf ekleme";
+  return "girdinin (kelime, deyim veya tam cümle) düzeltilmiş hali, kelimeler arasındaki boşlukları aynen koru";
 }
 function artikelFieldHint(){
   if(LANG === "zh") return "kelimenin pinyin okunuşu; her heceyi ton işaretiyle TEK bir Unicode karakter olarak yaz (ā/á/ǎ/à, ē/é/ě/è, ī/í/ǐ/ì, ō/ó/ǒ/ò, ū/ú/ǔ/ù, ǖ/ǘ/ǚ/ǜ gibi önceden birleşik/precomposed karakterler), harf ile ton işaretini asla ayrı yazma ya da aralarına boşluk koyma, heceler arasında da boşluk bırakma (örn. \"yǒu\", \"xièxie\")";
@@ -860,13 +860,15 @@ async function addWord(){
   try{
     let cards;
     if(toAdd.length === 1){
-      cards = [await ask(`"${toAdd[0]}" kelimesi için ${LANG_NAMES[LANG]} dilinde bir dil öğrenme kartı hazırla.
+      cards = [await ask(`"${toAdd[0]}" girdisi için ${LANG_NAMES[LANG]} dilinde bir dil öğrenme kartı hazırla.
+ÖNEMLİ: Eğer girdi bir cümle veya kalıp ise (örneğin "How are you?"), "word" alanına cümlenin/kalıbın kendisini kelimeler arasındaki boşlukları koruyarak tam metin halinde yaz (kelimeleri birleştirme veya tek kelimeye indirgeme). "pos" değerini cümle veya kalıplar için "kalıp" olarak belirle.
 Sadece geçerli JSON döndür, başka hiçbir şey yazma:
-{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"${artikelFieldHint()}","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}`)];
+{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"${artikelFieldHint()}","example":"içeren kısa örnek cümle (girdi bir cümleyse benzer/bağlam cümlesi)","exampleTr":"örnek cümlenin Türkçesi"}`)];
     }else{
-      cards = await ask(`Aşağıdaki ${LANG_NAMES[LANG]} kelime/ifadelerin her biri için ayrı bir dil öğrenme kartı hazırla: ${toAdd.join(", ")}.
-Girilen sırayla, her kelime için bir obje olacak şekilde sadece geçerli JSON dizisi döndür:
-[{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"${artikelFieldHint()}","example":"kelimeyi içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}]`);
+      cards = await ask(`Aşağıdaki ${LANG_NAMES[LANG]} kelime/ifade/cümlelerin her biri için ayrı bir dil öğrenme kartı hazırla: ${toAdd.join(", ")}.
+ÖNEMLİ: Girdilerden herhangi biri bir cümle veya kalıp ise, "word" alanına o cümlenin/kalıbın kendisini kelimeler arasındaki boşlukları koruyarak tam metin halinde yaz (kelimeleri birleştirme veya tek kelimeye indirgeme). "pos" değerini cümleler/kalıplar için "kalıp" yap.
+Girilen sırayla, her biri için bir obje olacak şekilde sadece geçerli JSON dizisi döndür:
+[{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı (en fazla 3 anlam, virgülle)","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"A1|A2|B1|B2|C1","artikel":"${artikelFieldHint()}","example":"içeren kısa örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}]`);
     }
     const inserted = cards.length > 1 ? await store.insertMany(cards.map(freshCard)) : [await store.insert(freshCard(cards[0]))];
     deck = inserted.concat(deck);
@@ -965,24 +967,37 @@ $("#quiz").addEventListener("click", e => {
 });
 async function buildQuiz(){
   const el = $("#quiz");
-  const words = deck.filter(c => c.pos !== "kalıp");
+  const words = deck.length >= 4 && deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck;
   if(words.length < 4){
-    el.innerHTML = `<div class="empty"><b>En az 4 kelime gerek</b>Alıştırma üretebilmem için desteni biraz doldur.</div>`;
+    el.innerHTML = `<div class="empty"><b>En az 4 kelime/kart gerek</b>Alıştırma üretebilmem için desteni biraz doldur.</div>`;
     return;
   }
   el.innerHTML = `<p class="loading">Sorular yazılıyor…</p>`;
   const focus = words.slice().sort((a,b)=>a.due-b.due).slice(0,10).map(d=>d.word);
+  const isZh = (LANG === "zh");
   try{
     const qs = await ask(`Şu ${LANG_NAMES[LANG]} kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
 En fazla 5 soru. Her soruda boşluk "___" ile gösterilsin, doğru cevap listedeki kelimelerden biri olsun, 4 şık olsun ve şıklar da listedeki kelimelerden seçilsin.
+${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu (boşluk "___" karakterini aynen koruyarak) ve "optionPinyins" dizisine 4 şıkkın sırasıyla pinyin okunuşlarını ekle.' : ''}
 Sadece geçerli JSON dizisi döndür:
-[{"sentence":"cümle ___ içeren","options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi"}]`);
-    el.innerHTML = qs.map(q => `
+[{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi"}]`);
+    
+    const pinyinMap = {};
+    deck.forEach(c => { if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; });
+
+    el.innerHTML = qs.map(q => {
+      const qPinyin = q.pinyin ? q.pinyin.replace("___","<b>_____</b>") : null;
+      return `
       <div class="q" data-answer="${q.answer}">
         <div class="qtext">${q.sentence.replace("___","<b>_____</b>")}</div>
-        <div class="opts">${q.options.map(o=>`<button class="opt">${o}</button>`).join("")}</div>
+        ${qPinyin ? `<div class="pinyin-sub" style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-top:-6px;margin-bottom:12px;letter-spacing:.02em">${qPinyin}</div>` : ""}
+        <div class="opts">${q.options.map((o, idx) => {
+          const py = (q.optionPinyins && q.optionPinyins[idx]) || pinyinMap[o];
+          return `<button class="opt">${o}${isZh && py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${py}</span>` : ""}</button>`;
+        }).join("")}</div>
         <div class="hint" hidden>${q.tr}</div>
-      </div>`).join("") + `<button class="ghost" id="requiz">Yeni set üret</button>`;
+      </div>`;
+    }).join("") + `<button class="ghost" id="requiz">Yeni set üret</button>`;
     $("#requiz").onclick = buildQuiz;
   }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
 }
