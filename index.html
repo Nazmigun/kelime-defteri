@@ -491,7 +491,29 @@ async function ask(prompt){
   });
   const data = await res.json();
   if(!res.ok) throw new Error(data.error || "İstek başarısız");
-  return JSON.parse(data.text.replace(/```json|```/g,"").trim());
+  
+  let raw = (data.text || "").trim();
+  
+  try { return JSON.parse(raw); } catch(e) {}
+
+  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch) {
+    try { return JSON.parse(codeBlockMatch[1].trim()); } catch(e) {}
+  }
+
+  const firstArr = raw.indexOf('[');
+  const lastArr = raw.lastIndexOf(']');
+  if (firstArr !== -1 && lastArr > firstArr) {
+    try { return JSON.parse(raw.slice(firstArr, lastArr + 1)); } catch(e) {}
+  }
+
+  const firstObj = raw.indexOf('{');
+  const lastObj = raw.lastIndexOf('}');
+  if (firstObj !== -1 && lastObj > firstObj) {
+    try { return JSON.parse(raw.slice(firstObj, lastObj + 1)); } catch(e) {}
+  }
+
+  throw new Error("Model yanıtı geçerli bir JSON formatında değildi.");
 }
 
 function renderStats(){
