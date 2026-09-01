@@ -954,7 +954,32 @@ $("#phrases").addEventListener("click", async e => {
 });
 
 /* ---------- alıştırma ---------- */
-$("#quiz").addEventListener("click", e => {
+$("#quiz").addEventListener("click", async e => {
+  const addBtn = e.target.closest(".quiz-add-btn");
+  if (addBtn) {
+    if (addBtn.disabled) return;
+    addBtn.disabled = true;
+    const word = addBtn.dataset.word;
+    const tr = addBtn.dataset.tr;
+    const pos = addBtn.dataset.pos || "isim";
+    const artikel = addBtn.dataset.artikel || null;
+    
+    try {
+      const card = freshCard({ word, tr, pos, artikel });
+      const inserted = await store.insert(card);
+      deck.unshift(inserted);
+      renderDeck();
+      renderStats();
+      if(!$("#study").hidden) renderStudy();
+      addBtn.textContent = "✓ Destede";
+      toast(`"${word}" tekrarlarına eklendi 🎉`);
+    } catch(err) {
+      addBtn.disabled = false;
+      alert("Eklenemedi: " + err.message);
+    }
+    return;
+  }
+
   const o = e.target.closest(".opt");
   if(!o || o.closest(".q").dataset.done) return;
   const q = o.closest(".q");
@@ -965,6 +990,7 @@ $("#quiz").addEventListener("click", e => {
   });
   q.querySelector(".hint").hidden = false;
 });
+
 async function buildQuiz(){
   const el = $("#quiz");
   const words = deck.length >= 4 && deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck;
@@ -978,11 +1004,13 @@ async function buildQuiz(){
   try{
     const qs = await ask(`Şu ${LANG_NAMES[LANG]} kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
 En fazla 5 soru. Her soruda boşluk "___" ile gösterilsin, doğru cevap listedeki kelimelerden biri olsun, 4 şık olsun ve şıklar da listedeki kelimelerden seçilsin.
-${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu (boşluk "___" karakterini aynen koruyarak) ve "optionPinyins" dizisine 4 şıkkın sırasıyla pinyin okunuşlarını ekle.' : ''}
+Ayrıca, her soru için hem 4 şıkkın hem de soru cümlesindeki önemli kelimelerin Türkçe anlamlarını "words" dizisinde ver.
+${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu (boşluk "___" karakterini aynen koruyarak), "optionPinyins" dizisine 4 şıkkın pinyin okunuşlarını ve "words" içindeki her kelime için "pinyin" okunuşunu ekle.' : ''}
 Sadece geçerli JSON dizisi döndür:
-[{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi"}]`);
+[{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}]`);
     
     const pinyinMap = {};
+    const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
     deck.forEach(c => { if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; });
 
     el.innerHTML = qs.map(q => {
@@ -995,7 +1023,26 @@ Sadece geçerli JSON dizisi döndür:
           const py = (q.optionPinyins && q.optionPinyins[idx]) || pinyinMap[o];
           return `<button class="opt">${o}${isZh && py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${py}</span>` : ""}</button>`;
         }).join("")}</div>
-        <div class="hint" hidden>${q.tr}</div>
+        <div class="hint" hidden style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+          <div style="font-size:14px;font-weight:600;color:var(--saffron);margin-bottom:10px">💡 ${q.tr}</div>
+          ${q.words && q.words.length ? `
+          <div style="font-size:11px;font-family:var(--mono);color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Kelimeler ve Anlamları</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${q.words.map(w => {
+              const inDeck = existingWords.has((w.word||"").toLowerCase());
+              return `
+              <div style="display:flex;justify-content:space-between;align-items:center;background:var(--ink-3);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px">
+                <div>
+                  <b style="color:var(--paper)">${w.word}</b> ${w.pinyin ? `<span style="font-family:var(--mono);font-size:11px;color:var(--paper-dim)">(${w.pinyin})</span>` : ""} 
+                  <span style="color:var(--paper-dim);margin-left:6px">— ${w.tr}</span>
+                </div>
+                <button class="ghost quiz-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0;flex:none;margin-left:8px">
+                  ${inDeck ? '✓ Destede' : '+ Tekrarlara ekle'}
+                </button>
+              </div>`;
+            }).join("")}
+          </div>` : ""}
+        </div>
       </div>`;
     }).join("") + `<button class="ghost" id="requiz">Yeni set üret</button>`;
     $("#requiz").onclick = buildQuiz;
