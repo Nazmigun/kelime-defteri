@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   const prompt = body?.prompt;
   if (!prompt) return res.status(400).json({ error: "Prompt parametresi eksik" });
 
-  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const models = ["gemini-3.6-flash"];
   const errors = [];
 
   for (const model of models) {
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       if (!r.ok) {
         const msg = data.error?.message || `API hatası (${r.status})`;
         errors.push(`${model}: ${msg}`);
-        if (r.status === 404 || msg.includes("not found")) continue;
+        if (r.status === 404 || msg.includes("not found") || msg.includes("no longer available")) continue;
         return res.status(r.status).json({ error: msg });
       }
 
