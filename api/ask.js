@@ -6,8 +6,8 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Sadece POST isteği kabul edilir" });
 
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return res.status(500).json({ error: "GEMINI_API_KEY ortam değişkeni tanımlı değil" });
+  const key = process.env.NVIDIA_API_KEY;
+  if (!key) return res.status(500).json({ error: "NVIDIA_API_KEY ortam değişkeni tanımlı değil" });
 
   let body = req.body;
   if (typeof body === "string") {
@@ -21,33 +21,37 @@ export default async function handler(req, res) {
   const prompt = body?.prompt;
   if (!prompt) return res.status(400).json({ error: "Prompt parametresi eksik" });
 
-  const models = ["gemini-3.6-flash"];
+  const models = ["moonshotai/kimi-k3", "deepseek-ai/deepseek-v4-flash-0731", "openai/gpt-oss-20b"];
   const errors = [];
 
   for (const model of models) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
     try {
-      const r = await fetch(url, {
+      const r = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${key}`
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" }
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 1024
         })
       });
 
       const data = await r.json();
       if (!r.ok) {
-        const msg = data.error?.message || `API hatası (${r.status})`;
+        const msg = data.error?.message || data.message || `API hatası (${r.status})`;
         errors.push(`${model}: ${msg}`);
-        if (r.status === 404 || msg.includes("not found") || msg.includes("no longer available")) continue;
+        if (r.status === 404 || r.status === 400) continue;
         return res.status(r.status).json({ error: msg });
       }
 
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const text = data.choices?.[0]?.message?.content;
       if (!text) {
-        const finishReason = data.candidates?.[0]?.finishReason;
-        errors.push(`${model}: Yanıt yok (Neden: ${finishReason || 'Boş'})`);
+        const finishReason = data.choices?.[0]?.finish_reason;
+        errors.push(`${model}: Yanıt yok (Neden: ${finishReason || "Boş"})`);
         continue;
       }
 
