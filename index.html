@@ -251,10 +251,23 @@
     </button>
     <div class="or">veya</div>
     <div class="mail">
+      <input id="pwEmailInput" type="email" placeholder="mail adresin" autocomplete="email">
+    </div>
+    <div class="mail">
+      <input id="pwInput" type="password" placeholder="şifre (en az 6 karakter)" autocomplete="current-password">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="pwLoginBtn" style="flex:1">Giriş yap</button>
+      <button class="ghost" id="pwSignupBtn" style="flex:1">Kayıt ol</button>
+    </div>
+    <p class="note">Şifreni belirleyip başka cihazdan da bu şifreyle giriş yapabilirsin.</p>
+    <div id="pwMsg"></div>
+    <div class="or">ya da linkle</div>
+    <div class="mail">
       <input id="mailInput" type="email" placeholder="mail adresin" autocomplete="email">
       <button class="ghost" id="mailBtn">Link gönder</button>
     </div>
-    <p class="note">Şifre yok — mailine tek kullanımlık bir giriş linki gelir.</p>
+    <p class="note">Şifre yerine mailine tek kullanımlık bir giriş linki gelsin istersen.</p>
     <div id="mailMsg"></div>
     <div class="or">ya da</div>
     <button class="guest" id="guestBtn">Giriş yapmadan dene</button>
@@ -303,8 +316,10 @@
         <button role="tab" aria-selected="false" data-tab="leech">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
         <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
         <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
+        <button role="tab" aria-selected="false" data-tab="test">Genel Test<span class="badge" id="wrongBadge" hidden></span></button>
         <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
         <button role="tab" aria-selected="false" data-tab="phrases">Kalıplar</button>
+        <button role="tab" aria-selected="false" data-tab="reading">Okuma</button>
         <button role="tab" aria-selected="false" data-tab="grammar">Dilbilgisi</button>
       </nav>
     </div>
@@ -313,8 +328,10 @@
       <section id="leech" hidden></section>
       <section id="deck" hidden></section>
       <section id="quiz" hidden></section>
+      <section id="test" hidden></section>
       <section id="write" hidden></section>
       <section id="phrases" hidden></section>
+      <section id="reading" hidden></section>
       <section id="grammar" hidden></section>
     </main>
   </div>
@@ -525,6 +542,7 @@ function renderStats(){
   const lc = leechCards().length;
   const lb = $("#leechBadge");
   lb.hidden = !lc; lb.textContent = lc;
+  updateWrongBadge();
 }
 function renderWho(){
   const el = $("#who");
@@ -918,16 +936,19 @@ async function fetchPhrases(){
   btn.disabled = true; btn.textContent = "…";
   $("#phraseList").innerHTML = `<p class="loading">Kalıplar hazırlanıyor…</p>`;
   try{
-    const out = await ask(`"${s}" durumunda anadili ${LANG_NAMES[LANG]} olanların günlük hayatta ezbere kullandığı 8 kalıp cümle ver.
+    const out = await ask(`"${s}" durumunda anadili ${LANG_NAMES[LANG]} olanların günlük hayatta ezbere kullandığı 15 kalıp cümle ver.
 ${$("#level").value} seviyesine uygun olsun. Ders kitabı kalıpları değil, gerçekte konuşulan doğal kalıplar olsun.
+En sık kullanılandan en az kullanılana doğru sırala. Her kalıp için ayrıca ne kadar sık kullanıldığını ("çok sık"/"sık"/"orta") ve kalıbı kullanan kısa bir örnek cümle+Türkçesini ver.
 Sadece geçerli JSON dizisi döndür:
-[{"phrase":"${LANG_NAMES[LANG]} kalıp","tr":"Türkçe karşılığı","use":"ne zaman kullanıldığına dair kısa Türkçe not"}]`);
+[{"phrase":"${LANG_NAMES[LANG]} kalıp","tr":"Türkçe karşılığı","use":"ne zaman kullanıldığına dair kısa Türkçe not","freq":"çok sık|sık|orta","example":"kalıbı kullanan örnek cümle","exampleTr":"örnek cümlenin Türkçesi"}]`);
+    const FREQ_COLOR = {"çok sık":"var(--mint)","sık":"var(--saffron)","orta":"var(--paper-dim)"};
     $("#phraseList").innerHTML = out.map((p,i) => `
       <div class="phrase">
         <div>
-          <div class="en">${p.phrase}</div>
+          <div class="en">${p.phrase} ${p.freq ? `<span class="meta" style="color:${FREQ_COLOR[p.freq]||"var(--paper-dim)"};margin-left:6px">${p.freq}</span>` : ""}</div>
           <div class="trx">${p.tr}</div>
           <div class="use">${p.use || ""}</div>
+          ${p.example ? `<div style="font-size:12px;margin-top:6px;line-height:1.5"><span style="color:var(--paper-dim)">${p.example}</span><br><span style="opacity:.6">${p.exampleTr||""}</span></div>` : ""}
         </div>
         <button class="ghost" data-add="${i}">+ Desteye</button>
       </div>`).join("");
@@ -944,12 +965,106 @@ $("#phrases").addEventListener("click", async e => {
   b.disabled = true;
   try{
     deck.unshift(await store.insert(freshCard({
-      word:p.phrase, tr:p.tr, pos:"kalıp", level:$("#level").value, example:p.use || "", exampleTr:""
+      word:p.phrase, tr:p.tr, pos:"kalıp", level:$("#level").value, example:p.example || p.use || "", exampleTr:p.exampleTr || ""
     })));
     b.closest(".phrase").classList.add("added");
     b.textContent = "eklendi";
     renderStats();
     toast("Kalıp desteye eklendi");
+  }catch(err){ b.disabled = false; alert("Eklenemedi: " + err.message); }
+});
+
+/* ---------- okuma ---------- */
+let readingState = null;
+function renderReading(){
+  const el = $("#reading");
+  el.innerHTML = `
+    <div class="gen" style="display:flex;margin-bottom:18px">
+      <label for="readingLevel" style="font-family:var(--mono);font-size:11px;color:var(--paper-dim);text-transform:uppercase;letter-spacing:.08em">Seviye</label>
+      <select id="readingLevel"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
+      <input id="readingTopic" placeholder="Konu (opsiyonel) — örn. teknoloji, seyahat, spor" style="flex:1;min-width:160px">
+      <button id="readingBtn">Metin getir</button>
+    </div>
+    <div id="readingContent">${readingState ? readingCardHtml() : `<div class="empty"><b>Okuma parçası</b>Seviyeni seç, istersen bir konu yaz, sonra <b>"Metin getir"</b> butonuna bas. Metindeki bilmediğin kelimeleri işaretleyip tek tıkla desteye ekleyebilirsin.</div>`}</div>`;
+  $("#readingLevel").value = readingState?.level || $("#level").value;
+  $("#readingTopic").value = readingState?.topic || "";
+  $("#readingTopic").addEventListener("keydown", e => { if(e.key === "Enter") fetchReading(); });
+  $("#readingBtn").onclick = fetchReading;
+  if(readingState) bindReadingHandlers();
+}
+function readingCardHtml(){
+  const r = readingState;
+  const isZh = (LANG === "zh");
+  const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
+  return `
+    <div class="q">
+      <div class="score">${r.level} · ${r.topic || "genel"}</div>
+      <div style="font-family:var(--display);font-size:22px;font-weight:600;margin:8px 0 12px">${r.title} <button class="speak" id="readingSpeak" aria-label="Seslendir">🔊</button></div>
+      <div style="line-height:1.8;font-size:16px;white-space:pre-line">${r.text}</div>
+      ${isZh && r.pinyin ? `<div style="margin-top:10px;font-family:var(--mono);font-size:13px;color:var(--paper-dim);line-height:1.7;white-space:pre-line">${r.pinyin}</div>` : ""}
+      <button class="ghost" id="toggleTrBtn" style="margin-top:14px">Türkçesini göster</button>
+      <div id="readingTr" hidden style="margin-top:10px;opacity:.75;line-height:1.7;white-space:pre-line">${r.tr}</div>
+      <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+        <div style="font-size:11px;font-family:var(--mono);color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Metindeki Önemli Kelimeler</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${r.words.map(w => {
+            const inDeck = existingWords.has((w.word||"").toLowerCase());
+            return `
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--ink-3);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px">
+              <div>
+                <b style="color:var(--paper)">${w.word}</b> ${w.pinyin ? `<span style="font-family:var(--mono);font-size:11px;color:var(--paper-dim)">(${w.pinyin})</span>` : ""}
+                <span style="color:var(--paper-dim);margin-left:6px">— ${w.tr}</span>
+              </div>
+              <button class="ghost reading-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0;flex:none;margin-left:8px">
+                ${inDeck ? '✓ Destede' : '+ Desteye ekle'}
+              </button>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+      <button class="ghost" id="newReadingBtn" style="margin-top:16px">Başka metin</button>
+    </div>`;
+}
+function bindReadingHandlers(){
+  $("#toggleTrBtn").onclick = () => {
+    const tr = $("#readingTr");
+    tr.hidden = !tr.hidden;
+    $("#toggleTrBtn").textContent = tr.hidden ? "Türkçesini göster" : "Türkçesini gizle";
+  };
+  $("#newReadingBtn").onclick = fetchReading;
+  $("#readingSpeak").onclick = () => speak(readingState.text);
+}
+async function fetchReading(){
+  const level = $("#readingLevel").value;
+  const topic = $("#readingTopic").value.trim();
+  const btn = $("#readingBtn");
+  btn.disabled = true; btn.textContent = "…";
+  $("#readingContent").innerHTML = `<p class="loading">Okuma parçası hazırlanıyor…</p>`;
+  const isZh = (LANG === "zh");
+  const lenPrompt = {A1:"60-90 kelime", A2:"90-130 kelime", B1:"130-180 kelime", B2:"180-250 kelime", C1:"250-320 kelime"}[level] || "130-180 kelime";
+  try{
+    const r = await ask(`${LANG_NAMES[LANG]} dilinde, ${level} seviyesine uygun, ${topic ? `"${topic}" konusuyla ilgili` : "güncel ve ilgi çekici bir konuda"}, ${lenPrompt} uzunluğunda bir okuma parçası yaz. Gerçek bir haber/dergi metni gibi doğal ve akıcı olsun, paragraflara ayır (paragraflar arasına \\n\\n koy).
+${isZh ? 'Çince için "pinyin" alanına metnin TAMAMININ pinyin okunuşunu (ton işaretleriyle, paragraf yapısını koruyarak) ekle.' : ''}
+Ayrıca metindeki ${level==="A1"||level==="A2"?"6-8":"8-12"} tane önemli/zor kelimeyi seç ve "words" dizisinde ver${isZh ? ' (her biri için pinyin dahil)' : ''}.
+Sadece geçerli JSON döndür:
+{"title":"metnin başlığı","text":"paragraflara ayrılmış okuma metni",${isZh ? '"pinyin":"metnin tamamının pinyin okunuşu",' : ''}"tr":"metnin tam Türkçe çevirisi, paragraflara ayrılmış","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}`);
+    readingState = Object.assign({ level, topic }, r);
+    renderReading();
+  }catch(err){ $("#readingContent").innerHTML = `<p class="err">Metin getirilemedi: ${err.message}</p>`; }
+  btn.disabled = false; btn.textContent = "Metin getir";
+}
+$("#reading").addEventListener("click", async e => {
+  const b = e.target.closest(".reading-add-btn");
+  if(!b || b.disabled) return;
+  b.disabled = true;
+  const word = b.dataset.word, tr = b.dataset.tr, pos = b.dataset.pos || "isim", artikel = b.dataset.artikel || null;
+  try{
+    const inserted = await store.insert(freshCard({ word, tr, pos, artikel }));
+    deck.unshift(inserted);
+    renderDeck(); renderStats();
+    if(!$("#study").hidden) renderStudy();
+    b.textContent = "✓ Destede";
+    toast(`"${word}" desteye eklendi 🎉`);
   }catch(err){ b.disabled = false; alert("Eklenemedi: " + err.message); }
 });
 
@@ -991,6 +1106,7 @@ $("#quiz").addEventListener("click", async e => {
   q.querySelector(".hint").hidden = false;
 });
 
+let quizHistory = [];
 async function buildQuiz(){
   const el = $("#quiz");
   const words = deck.length >= 4 && deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck;
@@ -999,16 +1115,19 @@ async function buildQuiz(){
     return;
   }
   el.innerHTML = `<p class="loading">Sorular yazılıyor…</p>`;
-  const focus = words.slice().sort((a,b)=>a.due-b.due).slice(0,10).map(d=>d.word);
+  const pool = words.slice().sort((a,b)=>a.due-b.due).slice(0,20);
+  const focus = pool.slice().sort(() => Math.random() - 0.5).slice(0,10).map(d=>d.word);
   const isZh = (LANG === "zh");
   try{
     const qs = await ask(`Şu ${LANG_NAMES[LANG]} kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
 En fazla 5 soru. Her soruda boşluk "___" ile gösterilsin, doğru cevap listedeki kelimelerden biri olsun, 4 şık olsun ve şıklar da listedeki kelimelerden seçilsin.
 Ayrıca, her soru için hem 4 şıkkın hem de soru cümlesindeki önemli kelimelerin Türkçe anlamlarını "words" dizisinde ver.
 ${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu (boşluk "___" karakterini aynen koruyarak), "optionPinyins" dizisine 4 şıkkın pinyin okunuşlarını ve "words" içindeki her kelime için "pinyin" okunuşunu ekle.' : ''}
+ÖNEMLİ: Aşağıdaki cümleleri ve onların çok benzerlerini tekrar üretme, her seferinde farklı bağlam/örnek kullan: ${quizHistory.length ? quizHistory.join(" | ") : "(yok)"}.
 Sadece geçerli JSON dizisi döndür:
 [{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}]`);
-    
+    quizHistory = quizHistory.concat(qs.map(q=>q.sentence)).slice(-30);
+
     const pinyinMap = {};
     const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
     deck.forEach(c => { if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; });
@@ -1049,6 +1168,148 @@ Sadece geçerli JSON dizisi döndür:
   }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
 }
 
+/* ---------- genel test ---------- */
+const TEST_HISTORY_KEY = () => `kelime-defteri:testler:${LANG}`;
+const WRONG_KEY = () => `kelime-defteri:yanlislar:${LANG}`;
+function loadTestHistory(){ try{ return JSON.parse(localStorage.getItem(TEST_HISTORY_KEY())) || []; }catch{ return []; } }
+function saveTestHistory(h){ try{ localStorage.setItem(TEST_HISTORY_KEY(), JSON.stringify(h.slice(-20))); }catch(e){ console.error(e); } }
+function loadWrongBank(){ try{ return JSON.parse(localStorage.getItem(WRONG_KEY())) || []; }catch{ return []; } }
+function saveWrongBank(b){ try{ localStorage.setItem(WRONG_KEY(), JSON.stringify(b.slice(-100))); }catch(e){ console.error(e); } }
+function updateWrongBadge(){
+  const n = loadWrongBank().length;
+  const b = $("#wrongBadge");
+  if(b){ b.hidden = !n; b.textContent = n; }
+}
+
+let bigTestState = null; // {mode:"test"|"review", questions:[...]}
+
+function renderTestMenu(){
+  const el = $("#test");
+  const hist = loadTestHistory().slice().reverse();
+  const wrongCount = loadWrongBank().length;
+  el.innerHTML = `
+    <div class="empty" style="text-align:left;padding:24px">
+      <b>Genel Test</b>Destenin genelini kapsayan, 20 sorudan oluşan bir test. Bitirince sonucun kaydedilir, yanlış yaptıkların ayrı bir havuzda birikir ve istediğinde sadece onları tekrar çözebilirsin.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0">
+      <button id="startBigTestBtn">20 Soruluk Genel Test Başlat</button>
+      ${wrongCount ? `<button class="ghost" id="reviewWrongBtn">Yanlışlarımı Tekrar Et (${wrongCount})</button>` : ""}
+    </div>
+    ${hist.length ? `
+    <div class="score" style="margin-bottom:8px">GEÇMİŞ TESTLER</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${hist.map(h => `<div style="display:flex;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--paper-dim)">
+        <span>${new Date(h.date).toLocaleDateString("tr-TR")}</span><span style="color:var(--paper)">${h.score}/${h.total}</span>
+      </div>`).join("")}
+    </div>` : ""}`;
+  $("#startBigTestBtn").onclick = startBigTest;
+  const rb = $("#reviewWrongBtn");
+  if(rb) rb.onclick = startReview;
+}
+
+async function startBigTest(){
+  const el = $("#test");
+  const words = deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck;
+  if(words.length < 4){
+    el.innerHTML = `<div class="empty"><b>En az 4 kelime/kart gerek</b>Genel test üretebilmem için desteni biraz doldur.</div>`;
+    return;
+  }
+  el.innerHTML = `<p class="loading">Genel test hazırlanıyor (20 soru)…</p>`;
+  const focus = words.slice().sort(() => Math.random() - 0.5).slice(0, 20).map(d => d.word);
+  const isZh = (LANG === "zh");
+  try{
+    const qs = await ask(`Şu ${LANG_NAMES[LANG]} kelime/kalıpların HEPSİNİ ayrı ayrı kapsayan boşluk doldurma soruları hazırla, destenin genelini test eden kapsamlı bir sınav olsun: ${focus.join(", ")}.
+Listedeki her öğe için tam olarak bir soru üret (toplam ${focus.length} soru). Her soruda boşluk "___" ile gösterilsin, doğru cevap o sorunun odağındaki kelime olsun, 4 şık olsun ve yanlış şıklar da listeden ya da anlamca yakın kelimelerden seçilsin.
+Ayrıca her soru için hem 4 şıkkın hem de soru cümlesindeki önemli kelimelerin Türkçe anlamlarını "words" dizisinde ver.
+${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu (boşluk "___" karakterini aynen koruyarak), "optionPinyins" dizisine 4 şıkkın pinyin okunuşlarını ve "words" içindeki her kelime için "pinyin" okunuşunu ekle.' : ''}
+Sadece geçerli JSON dizisi döndür:
+[{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}]`);
+    bigTestState = { mode:"test", questions: qs.map(q => Object.assign({}, q)) };
+    renderBigTest();
+  }catch(err){ el.innerHTML = `<p class="err">Test üretilemedi: ${err.message}</p>`; }
+}
+
+function startReview(){
+  const bank = loadWrongBank();
+  if(!bank.length){ toast("Yanlış havuzu boş"); return; }
+  bigTestState = { mode:"review", questions: bank.map(q => Object.assign({}, q)) };
+  renderBigTest();
+}
+
+function renderBigTest(){
+  const el = $("#test");
+  const isZh = (LANG === "zh");
+  const qs = bigTestState.questions;
+  const answered = qs.filter(q => q.userAnswer !== undefined).length;
+  el.innerHTML = `
+    <div class="toolbar"><div class="save-state">${answered}/${qs.length} cevaplandı · ${bigTestState.mode === "review" ? "yanlışları tekrar" : "genel test"}</div></div>
+    ${qs.map((q,i) => {
+      const qPinyin = q.pinyin ? q.pinyin.replace("___","<b>_____</b>") : null;
+      const done = q.userAnswer !== undefined;
+      return `
+      <div class="q" data-qi="${i}" ${done ? 'data-done="1"' : ""}>
+        <div class="qtext">${q.sentence.replace("___","<b>_____</b>")}</div>
+        ${qPinyin ? `<div class="pinyin-sub" style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-top:-6px;margin-bottom:12px;letter-spacing:.02em">${qPinyin}</div>` : ""}
+        <div class="opts">${q.options.map((o, idx) => {
+          const py = (q.optionPinyins && q.optionPinyins[idx]);
+          let cls = "opt";
+          if(done && idx === q.answer) cls += " right";
+          else if(done && idx === q.userAnswer) cls += " wrong";
+          return `<button class="${cls}">${o}${isZh && py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${py}</span>` : ""}</button>`;
+        }).join("")}</div>
+        <div class="hint" ${done ? "" : "hidden"}>💡 ${q.tr}</div>
+      </div>`;
+    }).join("")}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="finishTestBtn">${bigTestState.mode === "review" ? "Tekrarı Bitir" : "Testi Bitir ve Kaydet"}</button>
+      <button class="ghost" id="cancelTestBtn">Menüye dön</button>
+    </div>`;
+}
+$("#test").addEventListener("click", e => {
+  const o = e.target.closest(".opt");
+  if(o){
+    const q = o.closest(".q");
+    if(!q.dataset.done){
+      const idx = [...q.querySelectorAll(".opt")].indexOf(o);
+      const qi = +q.dataset.qi;
+      bigTestState.questions[qi].userAnswer = idx;
+      renderBigTest();
+    }
+    return;
+  }
+  if(e.target.closest("#finishTestBtn")){ finishBigTest(); return; }
+  if(e.target.closest("#cancelTestBtn")){ renderTestMenu(); return; }
+});
+function finishBigTest(){
+  const qs = bigTestState.questions;
+  const mode = bigTestState.mode;
+  let correct = 0; const wrongs = [];
+  qs.forEach(q => {
+    if(q.userAnswer !== undefined && q.userAnswer === q.answer) correct++;
+    else wrongs.push(q);
+  });
+  if(mode === "test"){
+    const hist = loadTestHistory();
+    hist.push({ date: Date.now(), score: correct, total: qs.length });
+    saveTestHistory(hist);
+    let bank = loadWrongBank();
+    wrongs.forEach(w => { if(!bank.some(b => b.sentence === w.sentence)) bank.push(Object.assign({ id: crypto.randomUUID() }, w, { userAnswer: undefined })); });
+    saveWrongBank(bank);
+  }else{
+    const wrongIds = new Set(wrongs.map(w => w.id));
+    saveWrongBank(loadWrongBank().filter(b => wrongIds.has(b.id)).map(b => Object.assign({}, b, { userAnswer: undefined })));
+  }
+  updateWrongBadge();
+  bigTestState = null;
+  const el = $("#test");
+  el.innerHTML = `
+    <div class="empty" style="text-align:left;padding:24px">
+      <b>${correct}/${qs.length} doğru</b>${mode === "test" ? "Sonuç kaydedildi." : ""} ${wrongs.length ? `${wrongs.length} soru yanlış/boş kaldı ve tekrar havuzunda.` : "Hepsi doğru, tekrar havuzu temizlendi 🎉"}
+    </div>
+    <button id="backToMenuBtn">Menüye dön</button>`;
+  $("#backToMenuBtn").onclick = renderTestMenu;
+}
+
 /* ---------- cümle kurma ---------- */
 let target = null;
 function newPrompt(){
@@ -1081,14 +1342,17 @@ async function suggestSentence(){
   const btn = $("#suggestBtn");
   btn.disabled = true; btn.textContent = "…";
   $("#suggestion").innerHTML = `<p class="loading">Örnek cümle hazırlanıyor…</p>`;
+  const isZh = (LANG === "zh");
   try{
     const r = await ask(`"${target.word}" kelimesini kullanan, ${$("#level").value} seviyesine uygun basit ve doğal bir ${LANG_NAMES[LANG]} örnek cümle yaz.
+${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu ekle (ton işaretleriyle, örn. "Wǒ hěn xǐhuan zhège.").' : ''}
 Sadece geçerli JSON döndür:
-{"sentence":"örnek cümle","tr":"cümlenin Türkçesi"}`);
+{"sentence":"örnek cümle",${isZh ? '"pinyin":"cümlenin pinyin okunuşu",' : ''}"tr":"cümlenin Türkçesi"}`);
     $("#suggestion").innerHTML = `
       <div class="feedback" style="margin-top:10px">
         <div class="score">örnek</div>
         <div style="font-family:var(--display);font-size:18px;margin-bottom:6px">${r.sentence}</div>
+        ${isZh && r.pinyin ? `<div style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-bottom:6px">${r.pinyin}</div>` : ""}
         <div style="opacity:.7">${r.tr}</div>
       </div>`;
   }catch(err){ $("#suggestion").innerHTML = `<p class="err">Örnek getirilemedi: ${err.message}</p>`; }
@@ -1098,11 +1362,13 @@ async function check(){
   const s = $("#sentence").value.trim();
   if(!s) return;
   $("#fb").innerHTML = `<p class="loading">Değerlendiriliyor…</p>`;
+  const isZh = (LANG === "zh");
   try{
     const r = await ask(`Bir Türk öğrenci ${LANG_NAMES[LANG]} öğrenirken "${target.word}" kelimesini kullanarak şu cümleyi kurdu: "${s}".
 Cümleyi dilbilgisi, kelime kullanımı ve doğallık açısından değerlendir. Geri bildirimi Türkçe yaz, kısa ve öğretici olsun.
+${isZh ? 'Çince için "pinyin" alanına düzeltilmiş cümlenin pinyin okunuşunu ekle (ton işaretleriyle).' : ''}
 Sadece geçerli JSON döndür:
-{"score":"0-10 arası sayı","corrected":"düzeltilmiş cümle (gerekmiyorsa aynısı)","feedback":"1-3 cümlelik Türkçe açıklama"}`);
+{"score":"0-10 arası sayı","corrected":"düzeltilmiş cümle (gerekmiyorsa aynısı)",${isZh ? '"pinyin":"düzeltilmiş cümlenin pinyin okunuşu",' : ''}"feedback":"1-3 cümlelik Türkçe açıklama"}`);
     const good = Number(r.score) >= 7;
     schedule(target, good ? 2 : 0);
     store.update(target); renderStats();
@@ -1110,6 +1376,7 @@ Sadece geçerli JSON döndür:
       <div class="feedback ${good ? "" : "bad"}">
         <div class="score">puan ${r.score}/10 · kart ${good ? "ilerletildi" : "tekrara alındı"}</div>
         <div style="font-family:var(--display);font-size:19px;margin-bottom:8px">${r.corrected}</div>
+        ${isZh && r.pinyin ? `<div style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-bottom:8px">${r.pinyin}</div>` : ""}
         <div>${r.feedback}</div>
       </div>
       <button class="ghost" style="margin-top:12px" id="nextBtn">Sıradaki kelime</button>`;
@@ -1119,7 +1386,13 @@ Sadece geçerli JSON döndür:
 
 /* ---------- dilbilgisi ---------- */
 const GRAMMAR_MODES = {micro:"Mini Ders", pattern:"Kalıp", vocab:"Kelime+Dilbilgisi", exam:"Sınav Modu"};
-const MICRO_TOPICS = ["Rastgele","Past Simple vs Present Perfect","in / on / at","say / tell","make / do","since / for"];
+const MICRO_TOPICS_BY_LANG = {
+  en: ["Rastgele","Past Simple vs Present Perfect","in / on / at","say / tell","make / do","since / for"],
+  de: ["Rastgele","Perfekt vs Präteritum","der/die/das (belirli tanımlıklar)","Wechselpräpositionen (in/auf/an)","werden vs wollen","Akkusativ vs Dativ"],
+  fr: ["Rastgele","Passé composé vs Imparfait","être vs avoir (yardımcı fiil)","il y a / depuis / pendant","ce / cet / cette / ces","de vs à (edatlar)"],
+  zh: ["Rastgele","了 (le) kullanımı","是...的 yapısı","把 (bǎ) yapısı","Ölçü sözcükleri (量词)","Yön tamlayıcıları (来/去)"]
+};
+function microTopics(){ return MICRO_TOPICS_BY_LANG[LANG] || MICRO_TOPICS_BY_LANG.en; }
 let grammarMode = "micro";
 let microTopic = "Rastgele", microState = null;
 let patternTopic = "", patternState = null;
@@ -1146,7 +1419,7 @@ function renderMicro(){
   el.innerHTML = `
     <div class="mode-bar">
       <label for="microTopic">Konu</label>
-      <select id="microTopic">${MICRO_TOPICS.map(t=>`<option ${t===microTopic?"selected":""}>${t}</option>`).join("")}</select>
+      <select id="microTopic">${microTopics().map(t=>`<option ${t===microTopic?"selected":""}>${t}</option>`).join("")}</select>
       <button id="microBtn">Mini ders getir →</button>
     </div>
     <div id="microContent">${microState ? microCardHtml() : `<div class="empty"><b>30 saniyelik mini ders</b>Bir konu seç (ya da "Rastgele" bırak) ve yukarıdaki <b>"Mini ders getir"</b> butonuna bas — kısa bir açıklama + 1 soru getireyim.</div>`}</div>`;
@@ -1429,13 +1702,15 @@ function renderTab(tab){
   if(tab === "leech") enterLeech();
   if(tab === "deck") renderDeck();
   if(tab === "quiz") buildQuiz();
+  if(tab === "test") renderTestMenu();
   if(tab === "write") newPrompt();
   if(tab === "phrases") renderPhrases();
+  if(tab === "reading") renderReading();
   if(tab === "grammar") renderGrammar();
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
-  ["study","leech","deck","quiz","write","phrases","grammar"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
+  ["study","leech","deck","quiz","test","write","phrases","reading","grammar"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
   renderTab(b.dataset.tab);
 });
 
@@ -1460,6 +1735,10 @@ async function switchLang(l){
   if(l === LANG) return;
   LANG = l;
   localStorage.setItem(LANG_KEY, l);
+  microTopic = "Rastgele"; microState = null;
+  patternTopic = ""; patternState = null;
+  vocabExState = null; examState = null;
+  readingState = null;
   syncLangSwitch();
   playTitleTypewriter();
   if($("#app").hidden) return;
@@ -1508,6 +1787,8 @@ const TUTORIAL_SLIDES = [
   {icon:"⚠️", title:"Zorlandıklarım", text:"En az 2 kez 'Bilmiyorum' dediğin kelimeler burada birikir; normal sırayı beklemeden ekstra pratik yapabilirsin."},
   {icon:"🗂️", title:"Deste", text:"Tüm kartların burada. Filtreleyebilir, en çok zorlandıklarına göre sıralayabilir, kartlara tıklayıp çevirebilir, 🔊 ile telaffuzunu dinleyebilirsin."},
   {icon:"❓", title:"Alıştırma", text:"Destendeki kelimelerle otomatik boşluk doldurma testi üretilir."},
+  {icon:"🎯", title:"Genel Test", text:"Destenin genelini kapsayan 20 soruluk bir sınav. Sonucun kaydedilir, yanlış yaptıkların ayrı bir havuzda birikir ve istediğin an sadece onları tekrar çözebilirsin."},
+  {icon:"📖", title:"Okuma", text:"Seviyene ve seçtiğin konuya göre bir okuma parçası üretilir. Metindeki bilmediğin kelimeleri tek tıkla desteye ekleyebilirsin."},
   {icon:"✍️", title:"Cümle kur", text:"Verilen kelimeyle bir cümle kur, AI değerlendirsin. Aklına bir şey gelmezse 'Aklıma cümle gelmiyor' butonuyla örnek isteyebilirsin."},
   {icon:"💬", title:"Kalıplar", text:"Bir durum yaz (örn. restoranda) — o durumda anadili konuşanların gerçekten kullandığı günlük kalıp cümleleri getireyim."},
   {icon:"📚", title:"Dilbilgisi", text:"Mini dersler, kalıp (pattern) alıştırmaları, kelime+dilbilgisi kombinasyonları ve sınav modu burada."},
@@ -1567,6 +1848,30 @@ $("#mailBtn").onclick = async () => {
   btn.disabled = false; btn.textContent = "Link gönder";
 };
 $("#mailInput").addEventListener("keydown", e => { if(e.key === "Enter") $("#mailBtn").click(); });
+
+async function pwSignup(){
+  const email = $("#pwEmailInput").value.trim(), password = $("#pwInput").value;
+  if(!email || !password){ $("#pwMsg").innerHTML = `<p class="err">Mail ve şifre gerekli</p>`; return; }
+  if(password.length < 6){ $("#pwMsg").innerHTML = `<p class="err">Şifre en az 6 karakter olmalı</p>`; return; }
+  const btn = $("#pwSignupBtn"); btn.disabled = true; btn.textContent = "…";
+  const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+  if(error){ $("#pwMsg").innerHTML = `<p class="err">${error.message}</p>`; }
+  else if(!data.session){ $("#pwMsg").innerHTML = `<div class="sent">Kayıt oluştu. Mailine gelen linke tıklayıp hesabını onayla.</div>`; }
+  else{ $("#pwMsg").innerHTML = `<div class="sent">Kayıt oluştu, giriş yapılıyor…</div>`; }
+  btn.disabled = false; btn.textContent = "Kayıt ol";
+}
+async function pwLogin(){
+  const email = $("#pwEmailInput").value.trim(), password = $("#pwInput").value;
+  if(!email || !password){ $("#pwMsg").innerHTML = `<p class="err">Mail ve şifre gerekli</p>`; return; }
+  const btn = $("#pwLoginBtn"); btn.disabled = true; btn.textContent = "…";
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error) $("#pwMsg").innerHTML = `<p class="err">${error.message === "Invalid login credentials" ? "Mail veya şifre yanlış" : error.message}</p>`;
+  btn.disabled = false; btn.textContent = "Giriş yap";
+}
+$("#pwSignupBtn").onclick = pwSignup;
+$("#pwLoginBtn").onclick = pwLogin;
+$("#pwInput").addEventListener("keydown", e => { if(e.key === "Enter") pwLogin(); });
+
 $("#guestBtn").onclick = () => { guest = true; showApp(); };
 $("#toLoginBtn").onclick = showGate;
 
