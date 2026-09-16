@@ -1,5 +1,3 @@
-export const config = { maxDuration: 60 };
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -47,32 +45,7 @@ export default async function handler(req, res) {
       return res.status(createRes.status || 500).json({ error: base + details });
     }
 
-    const predictionId = createData.predictionID;
-    const deadline = Date.now() + 55000;
-
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 1500));
-
-      const pollRes = await fetch(`https://api.eachlabs.ai/v1/prediction/${predictionId}`, {
-        headers: { "Authorization": `Bearer ${key}` }
-      });
-      const pollData = await pollRes.json();
-
-      if (pollData.status === "success") {
-        const output = pollData.output;
-        const text = typeof output === "string"
-          ? output
-          : output?.choices?.[0]?.message?.content || output?.text;
-        if (!text) return res.status(500).json({ error: "Model yanıtı boş döndü" });
-        return res.status(200).json({ text });
-      }
-      if (pollData.status === "error" || pollData.status === "cancelled") {
-        return res.status(500).json({ error: pollData.logs || `Model hata döndürdü (${pollData.status})` });
-      }
-      // created / starting / processing -> devam et
-    }
-
-    return res.status(504).json({ error: "Yanıt zaman aşımına uğradı" });
+    return res.status(200).json({ predictionID: createData.predictionID });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
