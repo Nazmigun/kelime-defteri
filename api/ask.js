@@ -42,8 +42,9 @@ export default async function handler(req, res) {
 
     const createData = await createRes.json();
     if (!createRes.ok || !createData.predictionID) {
-      const msg = createData.message || createData.error || `Tahmin oluşturulamadı (${createRes.status})`;
-      return res.status(createRes.status || 500).json({ error: msg });
+      const base = createData.message || createData.error || `Tahmin oluşturulamadı (${createRes.status})`;
+      const details = createData.details ? ` | details: ${JSON.stringify(createData.details)}` : "";
+      return res.status(createRes.status || 500).json({ error: base + details });
     }
 
     const predictionId = createData.predictionID;
