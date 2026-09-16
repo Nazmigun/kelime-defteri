@@ -36,8 +36,7 @@ export default async function handler(req, res) {
           model: "openai/gpt-5.5",
           temperature: 0.7,
           messages: [{ role: "user", content: prompt }]
-        },
-        webhook_url: ""
+        }
       })
     });
 
