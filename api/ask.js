@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "eachlabs-llm-router",
         input: {
-          model: "openai/gpt-5.5",
+          model: "openai/gpt-4o-mini",
           temperature: 0.7,
           messages: [{ role: "user", content: prompt }]
         }
