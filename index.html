@@ -120,6 +120,12 @@
   .opt{background:var(--ink-3);border:1px solid var(--line);color:var(--paper);font-weight:500;text-align:left}
   .opt.right{background:rgba(121,210,166,.16);border-color:var(--mint);color:var(--mint)}
   .opt.wrong{background:rgba(228,114,140,.14);border-color:var(--rose);color:var(--rose)}
+  .match-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .match-item{background:var(--ink-3);border:1px solid var(--line);color:var(--paper);font-weight:500;
+    text-align:left;width:100%;padding:12px 14px;font-size:14px;line-height:1.35}
+  .match-item.selected{border-color:var(--saffron);box-shadow:0 0 0 2px var(--saffron)}
+  .match-item.matched{background:rgba(121,210,166,.16);border-color:var(--mint);color:var(--mint);opacity:.65;cursor:default}
+  .match-item.wrong{background:rgba(228,114,140,.14);border-color:var(--rose);color:var(--rose)}
   .hint{font-size:13px;color:var(--paper-dim);margin-top:12px;font-style:italic}
   textarea{width:100%;min-height:90px;resize:vertical;font-size:16px}
   .prompt-word{font-family:var(--display);font-size:40px;font-weight:900;letter-spacing:-.02em;margin:0 0 4px}
@@ -316,6 +322,7 @@
         <button role="tab" aria-selected="false" data-tab="leech">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
         <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
         <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
+        <button role="tab" aria-selected="false" data-tab="match">Eşleştirme</button>
         <button role="tab" aria-selected="false" data-tab="test">Genel Test<span class="badge" id="wrongBadge" hidden></span></button>
         <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
         <button role="tab" aria-selected="false" data-tab="phrases">Kalıplar</button>
@@ -328,6 +335,7 @@
       <section id="leech" hidden></section>
       <section id="deck" hidden></section>
       <section id="quiz" hidden></section>
+      <section id="match" hidden></section>
       <section id="test" hidden></section>
       <section id="write" hidden></section>
       <section id="phrases" hidden></section>
@@ -1182,6 +1190,88 @@ Sadece geçerli JSON dizisi döndür:
   }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
 }
 
+/* ---------- eşleştirme ---------- */
+const MATCH_SIZE = 6;
+let matchState = null;
+
+function matchPool(){
+  const words = deck.filter(c => c.pos !== "kalıp");
+  return words.length >= 4 ? words : deck;
+}
+function shuffled(arr){ return arr.slice().sort(() => Math.random() - 0.5); }
+function newMatchRound(){
+  const words = matchPool();
+  const n = Math.min(MATCH_SIZE, words.length);
+  const pool = shuffled(words).slice(0, n);
+  matchState = {
+    pool,
+    left: shuffled(pool),
+    right: shuffled(pool),
+    selLeft: null, selRight: null,
+    wrongLeft: null, wrongRight: null,
+    matched: new Set()
+  };
+}
+function renderMatch(){
+  const el = $("#match");
+  const words = matchPool();
+  if(words.length < 4){
+    el.innerHTML = `<div class="empty"><b>En az 4 kelime/kart gerek</b>Eşleştirme oynayabilmen için desteni biraz doldur.</div>`;
+    matchState = null; return;
+  }
+  if(!matchState) newMatchRound();
+  const s = matchState;
+  const done = s.matched.size === s.pool.length;
+  const item = (side, i, c) => {
+    let cls = "match-item";
+    if(s.matched.has(c.id)) cls += " matched";
+    else if(side === "left" ? i === s.selLeft : i === s.selRight) cls += " selected";
+    if(side === "left" ? i === s.wrongLeft : i === s.wrongRight) cls += " wrong";
+    const label = side === "left" ? wordLabel(c) : c.tr;
+    return `<button type="button" class="${cls}" data-side="${side}" data-idx="${i}">${label}</button>`;
+  };
+  el.innerHTML = `
+    <div class="toolbar"><div class="save-state">${s.matched.size} / ${s.pool.length} eşleşti</div></div>
+    <div class="match-grid">
+      <div class="match-col">${s.left.map((c,i) => item("left", i, c)).join("")}</div>
+      <div class="match-col">${s.right.map((c,i) => item("right", i, c)).join("")}</div>
+    </div>
+    ${done ? `<button class="ghost" id="newMatchBtn" style="margin-top:14px">Yeni set</button>` : ""}`;
+}
+function matchClick(side, idx){
+  const s = matchState;
+  if(!s) return;
+  const card = side === "left" ? s.left[idx] : s.right[idx];
+  if(s.matched.has(card.id)) return;
+  if(side === "left"){
+    s.selLeft = (s.selLeft === idx) ? null : idx;
+  }else{
+    s.selRight = (s.selRight === idx) ? null : idx;
+  }
+  renderMatch();
+  if(s.selLeft === null || s.selRight === null) return;
+  const leftCard = s.left[s.selLeft], rightCard = s.right[s.selRight];
+  if(leftCard.id === rightCard.id){
+    s.matched.add(leftCard.id);
+    s.selLeft = null; s.selRight = null;
+    renderMatch();
+    if(s.matched.size === s.pool.length) toast("Hepsini eşleştirdin! 🎉");
+  }else{
+    s.wrongLeft = s.selLeft; s.wrongRight = s.selRight;
+    renderMatch();
+    setTimeout(() => {
+      s.selLeft = null; s.selRight = null; s.wrongLeft = null; s.wrongRight = null;
+      renderMatch();
+    }, 500);
+  }
+}
+$("#match").addEventListener("click", e => {
+  if(e.target.closest("#newMatchBtn")){ newMatchRound(); renderMatch(); return; }
+  const b = e.target.closest(".match-item");
+  if(!b || b.classList.contains("matched")) return;
+  matchClick(b.dataset.side, +b.dataset.idx);
+});
+
 /* ---------- genel test ---------- */
 const TEST_HISTORY_KEY = () => `kelime-defteri:testler:${LANG}`;
 const WRONG_KEY = () => `kelime-defteri:yanlislar:${LANG}`;
@@ -1716,6 +1806,7 @@ function renderTab(tab){
   if(tab === "leech") enterLeech();
   if(tab === "deck") renderDeck();
   if(tab === "quiz") buildQuiz();
+  if(tab === "match") renderMatch();
   if(tab === "test") renderTestMenu();
   if(tab === "write") newPrompt();
   if(tab === "phrases") renderPhrases();
@@ -1724,7 +1815,7 @@ function renderTab(tab){
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
-  ["study","leech","deck","quiz","test","write","phrases","reading","grammar"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
+  ["study","leech","deck","quiz","match","test","write","phrases","reading","grammar"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
   renderTab(b.dataset.tab);
 });
 
@@ -1752,7 +1843,7 @@ async function switchLang(l){
   microTopic = "Rastgele"; microState = null;
   patternTopic = ""; patternState = null;
   vocabExState = null; examState = null;
-  readingState = null;
+  readingState = null; matchState = null;
   syncLangSwitch();
   playTitleTypewriter();
   if($("#app").hidden) return;
@@ -1801,6 +1892,7 @@ const TUTORIAL_SLIDES = [
   {icon:"⚠️", title:"Zorlandıklarım", text:"En az 2 kez 'Bilmiyorum' dediğin kelimeler burada birikir; normal sırayı beklemeden ekstra pratik yapabilirsin."},
   {icon:"🗂️", title:"Deste", text:"Tüm kartların burada. Filtreleyebilir, en çok zorlandıklarına göre sıralayabilir, kartlara tıklayıp çevirebilir, 🔊 ile telaffuzunu dinleyebilirsin."},
   {icon:"❓", title:"Alıştırma", text:"Destendeki kelimelerle otomatik boşluk doldurma testi üretilir."},
+  {icon:"🔗", title:"Eşleştirme", text:"Destenden seçilen kelimeleri karşılıklı iki sütunda karşılıklarıyla eşleştir. Doğru eşleşme yeşile döner, yanlış olan kısa süre kırmızı yanıp söner."},
   {icon:"🎯", title:"Genel Test", text:"Destenin genelini kapsayan 20 soruluk bir sınav. Sonucun kaydedilir, yanlış yaptıkların ayrı bir havuzda birikir ve istediğin an sadece onları tekrar çözebilirsin."},
   {icon:"📖", title:"Okuma", text:"Seviyene ve seçtiğin konuya göre bir okuma parçası üretilir. Metindeki bilmediğin kelimeleri tek tıkla desteye ekleyebilirsin."},
   {icon:"✍️", title:"Cümle kur", text:"Verilen kelimeyle bir cümle kur, AI değerlendirsin. Aklına bir şey gelmezse 'Aklıma cümle gelmiyor' butonuyla örnek isteyebilirsin."},
