@@ -589,19 +589,58 @@ addEventListener("scroll", () => {
 
 /* ---------- tekrar ---------- */
 let current = null, revealed = false, grading = false;
+let roundIds = null, roundNum = 1, roundStopped = false;
+
+function resetStudyRound(){
+  roundIds = null; roundNum = 1; roundStopped = false;
+}
 
 function renderStudy(){
   const el = $("#study");
-  const queue = dueCards();
   if(!deck.length){
     el.innerHTML = `<div class="empty"><b>Defter boş</b>Yukarıya bir kelime yaz ya da ⚙ ile seviyene göre kelime getir.</div>`;
-    current = null; return;
+    current = null; resetStudyRound(); return;
   }
-  if(!queue.length){
+
+  if(roundStopped){
     const next = deck.slice().sort((a,b)=>a.due-b.due)[0];
-    el.innerHTML = `<div class="empty"><b>Bugünlük bitti</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${next.word}</strong></div>`;
+    el.innerHTML = `<div class="empty"><b>Tekrar durduruldu</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${next.word}</strong></div>`;
     current = null; return;
   }
+
+  if(roundIds === null){
+    const initial = dueCards();
+    if(!initial.length){
+      const next = deck.slice().sort((a,b)=>a.due-b.due)[0];
+      el.innerHTML = `<div class="empty"><b>Bugünlük bitti</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${next.word}</strong></div>`;
+      current = null; return;
+    }
+    roundIds = new Set(initial.map(c => c.id));
+  }
+
+  const queue = deck.filter(c => roundIds.has(c.id));
+
+  if(!queue.length){
+    const waiting = dueCards().length;
+    el.innerHTML = `
+      <div class="empty">
+        <b>${roundNum}. tur bitti 🎉</b>
+        ${waiting ? `${waiting} kart tekrar bekliyor.` : "Şimdilik bekleyen kart yok."}
+        <div style="display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap">
+          <button class="ghost" id="roundStop">Bitir</button>
+          <button id="roundNext" ${waiting ? "" : "disabled"}>${roundNum + 1}. tura devam et</button>
+        </div>
+      </div>`;
+    current = null;
+    $("#roundStop").onclick = () => { roundStopped = true; renderStudy(); };
+    $("#roundNext").onclick = () => {
+      roundNum++;
+      roundIds = null;
+      renderStudy();
+    };
+    return;
+  }
+
   current = queue.sort((a,b) => a.due - b.due)[0];
 
   const canSwipe = revealed && !grading;
@@ -647,6 +686,7 @@ function learned(){
   card.due = Date.now() + 21 * DAY;
   toast(`${card.word} · 21 gün sonra`);
   store.update(card);
+  roundIds?.delete(card.id);
   revealed = false; grading = false;
   renderStats(); renderStudy();
 }
@@ -656,6 +696,7 @@ function grade(g){
   const when = g === 0 ? "1 dakika" : (card.interval < 1 ? "1 günden az" : card.interval + " gün");
   toast(`${card.word} · ${when} sonra`);
   store.update(card);
+  roundIds?.delete(card.id);
   revealed = false; grading = false;
   renderStats(); renderStudy();
 }
@@ -1808,7 +1849,7 @@ Sadece geçerli JSON döndür:
 
 /* ---------- sekmeler ---------- */
 function renderTab(tab){
-  if(tab === "study"){ revealed = false; grading = false; renderStudy(); }
+  if(tab === "study"){ revealed = false; grading = false; resetStudyRound(); renderStudy(); }
   if(tab === "leech") enterLeech();
   if(tab === "deck") renderDeck();
   if(tab === "quiz") buildQuiz();
