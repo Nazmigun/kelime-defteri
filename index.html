@@ -1497,67 +1497,142 @@ function readingCardHtml(){
   const r = readingState;
   const isZh = (LANG === "zh");
   const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
-  let bodyHtml;
-  if(isZh && r.pinyin){
-    const textLines = r.text.split(/\n+/).filter(l => l.trim());
-    const pinyinLines = r.pinyin.split(/\n+/).filter(l => l.trim());
-    const trLines = (r.tr || "").split(/\n+/).filter(l => l.trim());
-    bodyHtml = `
-      <div class="zh-reading-lines">${textLines.map((line, i) => `
-        <div class="zh-line">
-          <div class="zh-hanzi">${line}</div>
-          ${pinyinLines[i] ? `<div class="zh-pinyin">${pinyinLines[i]}</div>` : ""}
-          <div class="zh-tr" hidden>${trLines[i] || ""}</div>
-        </div>`).join("")}</div>
-      <button class="ghost" id="toggleTrBtn" style="margin-top:14px">Türkçesini göster</button>`;
-  }else{
-    bodyHtml = `
-      <div style="line-height:1.8;font-size:16px;white-space:pre-line">${r.text}</div>
-      <button class="ghost" id="toggleTrBtn" style="margin-top:14px">Türkçesini göster</button>
-      <div id="readingTr" hidden style="margin-top:10px;opacity:.75;line-height:1.7;white-space:pre-line">${r.tr}</div>`;
+  const wordList = `
+    <div class="bg-surface-container-lowest p-space-md md:p-space-lg rounded-xl shadow-sm flex flex-col gap-space-sm">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-tertiary">stylus</span><span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Metinde Geçen Anahtar Kelimeler</span></div>
+        <span class="font-label-sm text-label-sm text-on-surface-variant">${r.words.length} Kelime</span>
+      </div>
+      <div class="flex flex-col gap-2.5">
+        ${r.words.map((w,i) => {
+          const inDeck = existingWords.has((w.word||"").toLowerCase());
+          return `
+          <div class="p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center font-label-sm text-label-sm font-bold text-primary shrink-0">${i+1}</span>
+              <div class="flex flex-col min-w-0">
+                <div class="flex items-baseline gap-2"><span class="font-headline-sm text-headline-sm text-on-surface truncate">${w.word}</span>${w.pinyin?`<span class="font-label-sm text-label-sm text-on-surface-variant">${w.pinyin}</span>`:""}</div>
+                <span class="font-body-sm text-body-sm text-on-surface font-medium truncate">${w.tr}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-surface hover:text-primary transition-colors" data-speak-word="${w.word}" title="Telaffuz Dinle"><span class="material-symbols-outlined text-[16px]">volume_up</span></button>
+              <button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary hover:bg-primary hover:text-on-primary transition-colors reading-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck?'disabled':''} title="Desteme Kaydet"><span class="material-symbols-outlined text-[16px]">${inDeck?'check':'bookmark'}</span></button>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+
+  if(isZh && Array.isArray(r.tokens) && r.tokens.length){
+    const rubyHtml = r.tokens.map(t => t.py
+      ? `<ruby class="cursor-pointer hover:text-primary transition-colors inline-flex flex-col items-center" data-speak-word="${t.w}"><rt class="font-label-sm text-label-sm text-on-surface-variant select-none zh-rt">${t.py}</rt>${t.w}</ruby>`
+      : `<span class="text-on-surface-variant">${t.w}</span>`
+    ).join("");
+    return `
+      <div class="q" style="background:none;border:none;padding:0;box-shadow:none">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pb-space-sm">
+          <div class="flex flex-col gap-space-xs">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm uppercase tracking-widest">${r.level} Okuma Metni</span>
+              <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-secondary">bar_chart</span>${r.topic || "genel"}</span>
+            </div>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">${r.title}</h1>
+          </div>
+          <div class="flex items-center gap-3 bg-surface-container-high px-4 py-2.5 rounded-full shadow-sm shrink-0">
+            <button type="button" id="readAudioBtn" class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-on-primary hover:bg-primary-container transition-colors shadow-sm"><span class="material-symbols-outlined text-[20px]" id="readAudioIcon">play_arrow</span></button>
+            <div class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-full">
+              <button type="button" data-rate="0.75" class="rate-btn px-1.5 py-0.5 rounded text-[11px] font-semibold text-on-surface-variant">0.75x</button>
+              <span class="text-outline-variant text-[10px]">|</span>
+              <button type="button" data-rate="1" class="rate-btn px-1.5 py-0.5 rounded text-[11px] font-semibold bg-surface-container-highest text-on-surface">1.0x</button>
+            </div>
+          </div>
+        </div>
+        <div class="w-full rounded-xl bg-surface-container-low p-space-sm md:p-space-md shadow-md">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+            <div class="lg:col-span-7 flex flex-col gap-space-md bg-surface-container-lowest p-space-md md:p-space-lg rounded-xl shadow-sm">
+              <div class="flex items-center justify-between pb-space-sm">
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-primary"></span><span class="font-label-lg text-label-lg font-semibold text-on-surface">Çince Orijinal Metin (Geleneksel)</span></div>
+                <button type="button" id="togglePinyinBtn" class="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm hover:text-on-surface hover:bg-surface-container-high transition-colors">Pinyin Gizle/Göster</button>
+              </div>
+              <article class="font-body-lg text-body-lg text-on-surface leading-loose tracking-wide flex flex-wrap items-baseline gap-x-2.5 gap-y-6 pt-2" id="rubyContainer">${rubyHtml}</article>
+            </div>
+            <div class="lg:col-span-5 flex flex-col gap-space-md">
+              <div class="bg-surface-container-lowest p-space-md md:p-space-lg rounded-xl shadow-sm flex flex-col gap-space-sm">
+                <div class="flex items-center justify-between">
+                  <span class="font-label-lg text-label-lg font-semibold text-on-surface flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-secondary">translate</span>Editoryal Türkçe Çeviri</span>
+                  <button type="button" id="toggleTrBtn" class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">Göster</button>
+                </div>
+                <div id="readingTr" hidden class="font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-line">${r.tr}</div>
+              </div>
+              ${wordList}
+              <div id="chengyuBox" class="bg-primary-fixed/30 p-space-md rounded-xl shadow-sm flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-primary font-label-sm text-label-sm uppercase font-bold tracking-wider"><span class="material-symbols-outlined text-[16px]">auto_stories</span>Günün Deyimi (成语)</div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">${r.chengyu ? "" : "Hazırlanıyor…"}</p>
+                ${r.chengyu ? `<div class="flex items-baseline gap-2"><span class="font-headline-md text-headline-md text-on-surface font-semibold">${r.chengyu.hanzi}</span><span class="font-label-md text-label-md text-on-surface-variant italic">${r.chengyu.pinyin}</span></div><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed"><strong>Anlamı:</strong> ${r.chengyu.meaning}</p>` : ""}
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="ghost" id="newReadingBtn" style="margin-top:16px">Başka metin</button>
+      </div>`;
   }
+
   return `
     <div class="q">
       <div class="score">${r.level} · ${r.topic || "genel"}</div>
       <div style="font-family:var(--display);font-size:22px;font-weight:600;margin:8px 0 12px">${r.title} <button class="speak" id="readingSpeak" aria-label="Seslendir">🔊</button></div>
-      ${bodyHtml}
-      <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
-        <div style="font-size:11px;font-family:var(--mono);color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Metindeki Önemli Kelimeler</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          ${r.words.map(w => {
-            const inDeck = existingWords.has((w.word||"").toLowerCase());
-            return `
-            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--ink-3);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px">
-              <div>
-                <b style="color:var(--paper)">${w.word}</b> ${w.pinyin ? `<span style="font-family:var(--mono);font-size:11px;color:var(--paper-dim)">(${w.pinyin})</span>` : ""}
-                <span style="color:var(--paper-dim);margin-left:6px">— ${w.tr}</span>
-              </div>
-              <button class="ghost reading-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0;flex:none;margin-left:8px">
-                ${inDeck ? '✓ Destede' : '+ Desteye ekle'}
-              </button>
-            </div>`;
-          }).join("")}
-        </div>
-      </div>
+      <div style="line-height:1.8;font-size:16px;white-space:pre-line">${r.text}</div>
+      <button class="ghost" id="toggleTrBtn" style="margin-top:14px">Türkçesini göster</button>
+      <div id="readingTr" hidden style="margin-top:10px;opacity:.75;line-height:1.7;white-space:pre-line">${r.tr}</div>
+      <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">${wordList}</div>
       <button class="ghost" id="newReadingBtn" style="margin-top:16px">Başka metin</button>
     </div>`;
 }
+let readAudioPlaying = false;
 function bindReadingHandlers(){
+  const r = readingState;
+  const isZh = (LANG === "zh") && Array.isArray(r.tokens) && r.tokens.length;
   $("#toggleTrBtn").onclick = () => {
     const btn = $("#toggleTrBtn");
-    const zhLines = document.querySelectorAll(".zh-tr");
-    if(zhLines.length){
-      const show = zhLines[0].hidden;
-      zhLines.forEach(l => l.hidden = !show);
-      btn.textContent = show ? "Türkçesini gizle" : "Türkçesini göster";
-    }else{
-      const tr = $("#readingTr");
-      tr.hidden = !tr.hidden;
-      btn.textContent = tr.hidden ? "Türkçesini göster" : "Türkçesini gizle";
-    }
+    const tr = $("#readingTr");
+    tr.hidden = !tr.hidden;
+    btn.textContent = tr.hidden ? (isZh ? "Göster" : "Türkçesini göster") : (isZh ? "Gizle" : "Türkçesini gizle");
   };
   $("#newReadingBtn").onclick = fetchReading;
-  $("#readingSpeak").onclick = () => speak(readingState.text);
+  const speakBtn = $("#readingSpeak");
+  if(speakBtn) speakBtn.onclick = () => speak(r.text);
+  $("#reading").querySelectorAll("[data-speak-word]").forEach(b => b.onclick = (e) => { e.stopPropagation(); speak(b.dataset.speakWord); });
+  if(!isZh){ if(!r.chengyu) fetchChengyu(); return; }
+  const toggleBtn = $("#togglePinyinBtn");
+  if(toggleBtn) toggleBtn.onclick = () => {
+    document.querySelectorAll("#rubyContainer .zh-rt").forEach(rt => rt.style.visibility = rt.style.visibility === "hidden" ? "visible" : "hidden");
+  };
+  const audioBtn = $("#readAudioBtn");
+  if(audioBtn) audioBtn.onclick = () => {
+    const icon = $("#readAudioIcon");
+    if(readAudioPlaying){ speechSynthesis.cancel(); readAudioPlaying = false; icon.textContent = "play_arrow"; return; }
+    readAudioPlaying = true; icon.textContent = "pause";
+    if(!("speechSynthesis" in window)){ toast("Tarayıcın sesli okumayı desteklemiyor"); readAudioPlaying=false; icon.textContent="play_arrow"; return; }
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(r.text);
+    u.lang = SPEECH_LOCALE[LANG] || "zh-CN";
+    u.rate = +(document.querySelector(".rate-btn.bg-surface-container-highest")?.dataset.rate || 1);
+    u.onend = u.onerror = () => { readAudioPlaying = false; icon.textContent = "play_arrow"; };
+    speechSynthesis.speak(u);
+  };
+  document.querySelectorAll(".rate-btn").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".rate-btn").forEach(x => x.classList.remove("bg-surface-container-highest","text-on-surface"));
+    b.classList.add("bg-surface-container-highest","text-on-surface");
+  });
+  if(!r.chengyu) fetchChengyu();
+}
+async function fetchChengyu(){
+  const r = readingState;
+  try{
+    const c = await ask(`${r.topic ? `"${r.topic}" konusuyla ilgili ya da genel olarak sık kullanılan, ${r.level} seviyesindeki bir Çince öğrenciye uygun` : "sık kullanılan"} bir Çince deyim (成语/chéngyǔ) seç. Sadece geçerli JSON döndür: {"hanzi":"成语","pinyin":"pinyin okunuşu (ton işaretleriyle)","meaning":"Türkçe kısa anlamı ve kullanım notu (1-2 cümle)"}`);
+    if(readingState === r){ r.chengyu = c; renderReading(); }
+  }catch(e){ /* sessizce geç, deyim süsleme amaçlı */ }
 }
 async function fetchReading(){
   const level = $("#readingLevel").value;
@@ -1569,11 +1644,11 @@ async function fetchReading(){
   const lenPrompt = {A1:"60-90 kelime", A2:"90-130 kelime", B1:"130-180 kelime", B2:"180-250 kelime", C1:"250-320 kelime"}[level] || "130-180 kelime";
   try{
     const r = await ask(`${LANG_NAMES[LANG]} dilinde, ${level} seviyesine uygun, ${topic ? `"${topic}" konusuyla ilgili` : "güncel ve ilgi çekici bir konuda"}, ${lenPrompt} uzunluğunda bir okuma parçası yaz. Gerçek bir haber/dergi metni gibi doğal ve akıcı olsun, paragraflara ayır (paragraflar arasına \\n\\n koy).
-${isZh ? 'Çince metni BASİTLEŞTİRİLMİŞ değil GELENEKSEL (traditional) Çince karakterlerle yaz. "pinyin" alanına metnin TAMAMININ pinyin okunuşunu, "tr" alanına da Türkçe çevirisini, "text" ile TAM OLARAK AYNI SAYIDA paragrafa bölerek (aynı \\n\\n yapısıyla, paragraf paragraf hizalı) ver.' : ''}
+${isZh ? 'Çince metni BASİTLEŞTİRİLMİŞ değil GELENEKSEL (traditional) Çince karakterlerle yaz. Ayrıca "tokens" alanına metnin TAMAMINI, SIRAYLA, kelime/karakter gruplarına bölünmüş şekilde ver: her öğe {"w":"Çince parça","py":"pinyin okunuşu"} olsun; noktalama işaretleri ve boşluklar için "py" alanını null bırak. "tokens" dizisi art arda birleştirildiğinde metnin TAMAMINI (paragraf ayraçları \\n\\n dahil, "w" alanında) eksiksiz yeniden oluşturmalı.' : ''}
 Ayrıca metindeki ${level==="A1"||level==="A2"?"6-8":"8-12"} tane önemli/zor kelimeyi seç ve "words" dizisinde ver${isZh ? ' (her biri için pinyin dahil)' : ''}.
 Sadece geçerli JSON döndür:
-{"title":"metnin başlığı","text":"paragraflara ayrılmış okuma metni",${isZh ? '"pinyin":"metnin tamamının pinyin okunuşu",' : ''}"tr":"metnin tam Türkçe çevirisi, paragraflara ayrılmış","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}`);
-    readingState = Object.assign({ level, topic }, r);
+{"title":"metnin başlığı","text":"paragraflara ayrılmış okuma metni (düz metin, tokens ile aynı içerik)",${isZh ? '"tokens":[{"w":"parça","py":"pinyin veya null"}],' : ''}"tr":"metnin tam Türkçe çevirisi, paragraflara ayrılmış","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}`);
+    readingState = Object.assign({ level, topic, chengyu: null }, r);
     renderReading();
   }catch(err){ $("#readingContent").innerHTML = `<p class="err">Metin getirilemedi: ${err.message}</p>`; }
   btn.disabled = false; btn.textContent = "Metin getir";
@@ -1588,7 +1663,7 @@ $("#reading").addEventListener("click", async e => {
     deck.unshift(inserted);
     renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
-    b.textContent = "✓ Destede";
+    b.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span>';
     toast(`"${word}" desteye eklendi 🎉`);
   }catch(err){ b.disabled = false; alert("Eklenemedi: " + err.message); }
 });
