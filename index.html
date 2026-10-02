@@ -1620,19 +1620,15 @@ $("#quiz").addEventListener("click", async e => {
     return;
   }
 
-  const o = e.target.closest(".opt");
-  if(!o || o.closest(".q").dataset.done) return;
-  const q = o.closest(".q");
-  q.dataset.done = "1";
-  q.querySelectorAll(".opt").forEach((b,i) => {
-    if(i == q.dataset.answer) b.classList.add("right");
-    else if(b === o) b.classList.add("wrong");
-  });
-  q.querySelectorAll(".opt-tr").forEach(s => s.hidden = false);
-  q.querySelector(".hint").hidden = false;
+  const opt = e.target.closest("[data-opt]");
+  if(opt && quizSession && !opt.disabled) answerQuiz(+opt.dataset.opt);
 });
 
 let quizHistory = [];
+let quizSession = null; // {questions, idx, points, streak, maxStreak, answers:[idx|null]}
+
+function quizMultiplier(streak){ return streak >= 5 ? 2 : streak >= 3 ? 1.5 : 1; }
+
 async function buildQuiz(){
   const el = $("#quiz");
   const words = deck.length >= 4 && deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck;
@@ -1653,47 +1649,184 @@ ${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu (boşluk "_
 Sadece geçerli JSON dizisi döndür:
 [{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"optionTr":["","","",""],"answer":0,"tr":"cümlenin Türkçesi","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}]`);
     quizHistory = quizHistory.concat(qs.map(q=>q.sentence)).slice(-30);
+    quizSession = { questions: qs, idx: 0, points: 0, streak: 0, maxStreak: 0, answers: new Array(qs.length).fill(null) };
+    renderQuizQuestion();
+  }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
+}
 
-    const pinyinMap = {};
-    const trMap = {};
-    const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
-    deck.forEach(c => { if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; if(c.word) trMap[c.word.toLowerCase()] = c.tr; });
+function renderQuizQuestion(){
+  const el = $("#quiz");
+  const s = quizSession;
+  const i = s.idx;
+  const q = s.questions[i];
+  const isZh = (LANG === "zh");
+  const done = s.answers[i] !== null;
+  const pct = Math.round(((i + (done?1:0)) / s.questions.length) * 100);
+  const qPinyin = q.pinyin ? q.pinyin.replace("___","<b>_____</b>") : null;
+  const trMap = {}; const pinyinMap = {};
+  deck.forEach(c => { if(c.word) trMap[c.word.toLowerCase()] = c.tr; if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; });
+  const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
+  const letters = ["A","B","C","D"];
+  const tileTone = (idx) => {
+    if(!done) return "bg-surface-container-low hover:bg-surface-container text-on-surface";
+    if(idx === q.answer) return "bg-tertiary-fixed/60 text-on-tertiary-fixed";
+    if(idx === s.answers[i]) return "bg-error-container/70 text-on-error-container opacity-90";
+    return "bg-surface-container-low text-on-surface opacity-60";
+  };
 
-    el.innerHTML = qs.map(q => {
-      const qPinyin = q.pinyin ? q.pinyin.replace("___","<b>_____</b>") : null;
-      return `
-      <div class="q" data-answer="${q.answer}">
-        <div class="qtext">${q.sentence.replace("___","<b>_____</b>")}</div>
-        ${qPinyin ? `<div class="pinyin-sub" style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-top:-6px;margin-bottom:12px;letter-spacing:.02em">${qPinyin}</div>` : ""}
-        <div class="opts">${q.options.map((o, idx) => {
-          const py = (q.optionPinyins && q.optionPinyins[idx]) || pinyinMap[o];
-          const otr = (q.optionTr && q.optionTr[idx]) || trMap[(o||"").toLowerCase()] || "";
-          return `<button class="opt">${o}${isZh && py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${py}</span>` : ""}${otr ? `<span class="opt-tr" hidden>${otr}</span>` : ""}</button>`;
-        }).join("")}</div>
-        <div class="hint" hidden style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
-          <div style="font-size:14px;font-weight:600;color:var(--saffron);margin-bottom:10px">💡 ${q.tr}</div>
-          ${q.words && q.words.length ? `
-          <div style="font-size:11px;font-family:var(--mono);color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Kelimeler ve Anlamları</div>
-          <div style="display:flex;flex-direction:column;gap:6px">
+  el.innerHTML = `
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+      <div class="lg:col-span-8 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+          <div class="flex flex-wrap items-center justify-between gap-space-xs">
+            <div class="flex items-center gap-space-xs">
+              <span class="px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm uppercase tracking-wider">${LANG_NAMES[LANG]}</span>
+              <span class="font-label-md text-label-md text-on-surface-variant font-medium">Boşluk Doldurma Alıştırması</span>
+            </div>
+            <div class="flex items-center gap-space-sm font-label-md text-label-md">
+              <span class="text-on-surface font-semibold">Soru ${i+1} / ${s.questions.length}</span>
+              <span class="text-outline-variant">•</span>
+              <span class="text-primary font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">bolt</span>${s.points} Puan</span>
+            </div>
+          </div>
+          <div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+            <div class="bg-primary-container h-full rounded-full transition-all duration-500 ease-out" style="width:${pct}%"></div>
+          </div>
+        </div>
+
+        <div class="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-md flex flex-col gap-space-lg overflow-hidden">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-primary-container ${done?"":"animate-pulse"}"></span>
+              <span class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant font-semibold">Boşluğu Doldur</span>
+            </div>
+            <button type="button" id="quizSpeak" class="flex items-center gap-1 font-label-sm text-label-sm text-secondary hover:text-on-surface transition-colors px-2 py-1 rounded bg-surface-container-low"><span class="material-symbols-outlined text-[16px]">volume_up</span>Dinle</button>
+          </div>
+          <div class="bg-surface-container-low/70 rounded-xl p-space-lg flex flex-col items-center justify-center text-center gap-space-sm">
+            <div class="font-display text-headline-lg text-on-surface tracking-wide">${q.sentence.replace("___",`<span class="inline-flex items-center justify-center px-4 py-1 rounded-lg bg-surface-container-lowest text-primary font-semibold shadow-sm min-w-[80px]">?</span>`)}</div>
+            ${qPinyin ? `<div class="font-body-md text-body-md text-on-surface-variant italic tracking-normal">${qPinyin}</div>` : ""}
+            ${done ? `<div class="font-body-sm text-body-sm text-on-surface/80 max-w-xl pt-2">"${q.tr}"</div>` : ""}
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm pt-space-xs">
+            ${q.options.map((o,idx) => {
+              const py = (q.optionPinyins && q.optionPinyins[idx]) || pinyinMap[o];
+              const otr = (q.optionTr && q.optionTr[idx]) || trMap[(o||"").toLowerCase()] || "";
+              return `
+              <button type="button" data-opt="${idx}" ${done?"disabled":""} class="group relative text-left p-space-md rounded-xl shadow-sm transition-all flex items-center justify-between ${tileTone(idx)}">
+                <div class="flex items-center gap-space-sm min-w-0">
+                  <span class="w-8 h-8 rounded-full flex items-center justify-center font-label-md text-label-md font-bold shadow-sm shrink-0 ${done && idx===q.answer ? "bg-tertiary text-on-tertiary" : done && idx===s.answers[i] ? "bg-error text-on-error" : "bg-surface-container-high text-on-surface-variant"}">${letters[idx]}</span>
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-headline-sm text-headline-sm font-semibold truncate leading-snug">${o}${isZh && py ? `<span class="block font-label-sm text-label-sm font-normal opacity-80">${py}</span>` : ""}</span>
+                    ${done && otr ? `<span class="font-body-sm text-body-sm truncate opacity-90">${otr}</span>` : ""}
+                  </div>
+                </div>
+                ${done && idx===q.answer ? `<span class="w-6 h-6 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center shadow-sm shrink-0"><span class="material-symbols-outlined text-[16px] font-bold">check</span></span>` : ""}
+                ${done && idx===s.answers[i] && idx!==q.answer ? `<span class="w-6 h-6 rounded-full bg-error text-on-error flex items-center justify-center shadow-sm shrink-0"><span class="material-symbols-outlined text-[16px] font-bold">close</span></span>` : ""}
+              </button>`;
+            }).join("")}
+          </div>
+        </div>
+
+        ${done ? `
+        <div class="bg-surface-container-low rounded-xl p-space-lg shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+          <div class="flex items-start gap-space-md max-w-2xl">
+            <div class="w-10 h-10 rounded-full ${s.answers[i]===q.answer?"bg-tertiary-fixed text-on-tertiary-fixed":"bg-error-container text-on-error-container"} flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+              <span class="material-symbols-outlined text-[24px]">${s.answers[i]===q.answer?"lightbulb":"menu_book"}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span class="font-headline-sm text-headline-sm font-semibold ${s.answers[i]===q.answer?"text-tertiary":"text-error"}">${s.answers[i]===q.answer?"Harika! Doğru Cevap":"Bu sefer olmadı"}</span>
+                ${s.answers[i]===q.answer ? `<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed-dim/40 text-on-tertiary-container font-label-sm text-label-sm">+${Math.round(20*quizMultiplier(s.streak))} Puan</span>` : ""}
+              </div>
+              <p class="font-body-md text-body-md text-on-surface">${q.tr}</p>
+              ${q.words && q.words.length ? `<div class="flex flex-wrap items-center gap-2 mt-1">
+                ${q.words.map(w => `<span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm font-medium">${w.word}${w.pinyin?` (${w.pinyin})`:""} — ${w.tr}</span>`).join("")}
+              </div>` : ""}
+            </div>
+          </div>
+          <button type="button" id="quizNextBtn" class="w-full md:w-auto px-6 py-3 rounded-full bg-primary-container text-on-primary-container hover:shadow-[0_6px_16px_rgba(212,136,59,0.28)] transition-all font-label-lg text-label-lg font-semibold flex items-center justify-center gap-2 shrink-0">
+            <span>${i < s.questions.length-1 ? "Sonraki Soru" : "Sonuçları Gör"}</span><span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </button>
+        </div>` : ""}
+      </div>
+
+      <div class="lg:col-span-4 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md">
+          <div class="flex items-center justify-between"><span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Soru Akışı</span></div>
+          <div class="grid grid-cols-5 gap-2">
+            ${s.questions.map((_,idx) => {
+              const r = s.answers[idx];
+              let cls = "bg-surface-container-high text-on-surface-variant font-medium";
+              let label = String(idx+1);
+              if(r !== null) { cls = r === s.questions[idx].answer ? "bg-tertiary-fixed text-on-tertiary-fixed font-bold" : "bg-error-container text-on-error-container font-bold"; label = (r === s.questions[idx].answer ? "✓ " : "× ") + (idx+1); }
+              else if(idx === i) cls = "bg-primary-container text-on-primary-container font-bold";
+              return `<div class="h-9 rounded-lg flex items-center justify-center font-label-md text-label-md shadow-sm ${cls}">${label}</div>`;
+            }).join("")}
+          </div>
+          <div class="flex items-center justify-between pt-space-xs text-on-surface-variant font-label-sm text-label-sm">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>${s.answers.filter((r,idx)=>r!==null && r===s.questions[idx].answer).length} Doğru</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-error"></span>${s.answers.filter((r,idx)=>r!==null && r!==s.questions[idx].answer).length} Yanlış</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-surface-container-highest"></span>${s.answers.filter(r=>r===null).length} Kalan</span>
+          </div>
+        </div>
+        ${q.words && q.words.length ? `
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+          <span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Bu Sorunun Kelimeleri</span>
+          <div class="flex flex-col gap-2">
             ${q.words.map(w => {
               const inDeck = existingWords.has((w.word||"").toLowerCase());
-              return `
-              <div style="display:flex;justify-content:space-between;align-items:center;background:var(--ink-3);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px">
-                <div>
-                  <b style="color:var(--paper)">${w.word}</b> ${w.pinyin ? `<span style="font-family:var(--mono);font-size:11px;color:var(--paper-dim)">(${w.pinyin})</span>` : ""} 
-                  <span style="color:var(--paper-dim);margin-left:6px">— ${w.tr}</span>
-                </div>
-                <button class="ghost quiz-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0;flex:none;margin-left:8px">
-                  ${inDeck ? '✓ Destede' : '+ Tekrarlara ekle'}
-                </button>
+              return `<div class="p-2.5 rounded-lg bg-surface-container-low flex items-center justify-between gap-2">
+                <div class="flex flex-col min-w-0"><span class="font-headline-sm text-headline-sm leading-tight truncate">${w.word}${w.pinyin?` (${w.pinyin})`:""}</span><span class="font-body-sm text-body-sm text-on-surface-variant truncate">${w.pos||""} • ${w.tr}</span></div>
+                <button class="ghost quiz-add-btn shrink-0" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0">${inDeck ? '✓ Destede' : '+ Ekle'}</button>
               </div>`;
             }).join("")}
-          </div>` : ""}
+          </div>
+        </div>` : ""}
+        <div class="bg-surface-container-high/80 rounded-xl p-space-md shadow-sm flex items-center justify-between">
+          <div class="flex items-center gap-space-sm">
+            <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold"><span class="material-symbols-outlined text-[20px]">local_fire_department</span></div>
+            <div class="flex flex-col"><span class="font-label-lg text-label-lg text-on-surface font-semibold">${s.streak} Seri Doğru</span><span class="font-body-sm text-body-sm text-on-surface-variant">${s.streak>=3?"Harika odaklanma!":"Devam et"}</span></div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full bg-surface-container-lowest font-label-sm text-label-sm font-semibold text-primary shadow-sm">x${quizMultiplier(s.streak)} Çarpan</span>
         </div>
-      </div>`;
-    }).join("") + `<button class="ghost" id="requiz">Yeni set üret</button>`;
-    $("#requiz").onclick = buildQuiz;
-  }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
+      </div>
+    </div>`;
+
+  const speakBtn = $("#quizSpeak");
+  if(speakBtn) speakBtn.onclick = () => speak(q.sentence.replace("___"," "));
+  const nextBtn = $("#quizNextBtn");
+  if(nextBtn) nextBtn.onclick = () => {
+    if(s.idx < s.questions.length - 1){ s.idx++; renderQuizQuestion(); }
+    else finishQuizSession();
+  };
+}
+function answerQuiz(idx){
+  const s = quizSession;
+  const q = s.questions[s.idx];
+  s.answers[s.idx] = idx;
+  if(idx === q.answer){
+    s.streak++; s.maxStreak = Math.max(s.maxStreak, s.streak);
+    s.points += Math.round(20 * quizMultiplier(s.streak));
+  }else{
+    s.streak = 0;
+  }
+  renderQuizQuestion();
+}
+function finishQuizSession(){
+  const s = quizSession;
+  const correct = s.answers.filter((r,idx) => r === s.questions[idx].answer).length;
+  const s2 = loadDailyStats();
+  s2.points += s.points; s2.totalPoints = (s2.totalPoints||0) + s.points;
+  saveDailyStats(s2); renderFooterStats();
+  $("#quiz").innerHTML = `
+    <div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md flex flex-col items-center text-center gap-space-sm max-w-xl mx-auto">
+      <span class="material-symbols-outlined text-[48px] text-primary">emoji_events</span>
+      <h2 class="font-headline-lg text-headline-lg text-on-surface">${correct} / ${s.questions.length} doğru</h2>
+      <p class="font-body-md text-body-md text-on-surface-variant">Bu turda <strong class="text-primary">${s.points} puan</strong> kazandın${s.maxStreak>=3?`, en uzun serin <strong class="text-tertiary">${s.maxStreak}</strong> doğruydu`:""}.</p>
+      <button type="button" id="requiz" class="mt-2 px-6 py-3 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg font-semibold">Yeni set üret</button>
+    </div>`;
+  quizSession = null;
+  $("#requiz").onclick = buildQuiz;
 }
 
 /* ---------- eşleştirme ---------- */
