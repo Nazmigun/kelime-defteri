@@ -3,21 +3,105 @@
 <title>Kelime Defteri</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: ["class", '[data-theme="dark"]'],
+  theme: { extend: {
+    colors: {
+      surface:'var(--surface)', 'surface-dim':'var(--surface-dim)', 'surface-bright':'var(--surface-bright)',
+      'surface-container-lowest':'var(--surface-container-lowest)', 'surface-container-low':'var(--surface-container-low)',
+      'surface-container':'var(--surface-container)', 'surface-container-high':'var(--surface-container-high)', 'surface-container-highest':'var(--surface-container-highest)',
+      'on-surface':'var(--on-surface)', 'on-surface-variant':'var(--on-surface-variant)',
+      outline:'var(--outline)', 'outline-variant':'var(--outline-variant)',
+      'inverse-surface':'var(--inverse-surface)', 'inverse-on-surface':'var(--inverse-on-surface)', 'inverse-primary':'var(--inverse-primary)',
+      primary:'var(--primary)', 'on-primary':'var(--on-primary)', 'primary-container':'var(--primary-container)', 'on-primary-container':'var(--on-primary-container)',
+      secondary:'var(--secondary)', 'on-secondary':'var(--on-secondary)', 'secondary-container':'var(--secondary-container)', 'on-secondary-container':'var(--on-secondary-container)',
+      tertiary:'var(--tertiary)', 'on-tertiary':'var(--on-tertiary)', 'tertiary-container':'var(--tertiary-container)', 'on-tertiary-container':'var(--on-tertiary-container)',
+      error:'var(--error)', 'on-error':'var(--on-error)', 'error-container':'var(--error-container)', 'on-error-container':'var(--on-error-container)',
+      'primary-fixed':'var(--primary-fixed)', 'primary-fixed-dim':'var(--primary-fixed-dim)', 'on-primary-fixed':'var(--on-primary-fixed)', 'on-primary-fixed-variant':'var(--on-primary-fixed-variant)',
+      'secondary-fixed':'var(--secondary-fixed)', 'secondary-fixed-dim':'var(--secondary-fixed-dim)', 'on-secondary-fixed':'var(--on-secondary-fixed)', 'on-secondary-fixed-variant':'var(--on-secondary-fixed-variant)',
+      'tertiary-fixed':'var(--tertiary-fixed)', 'tertiary-fixed-dim':'var(--tertiary-fixed-dim)', 'on-tertiary-fixed':'var(--on-tertiary-fixed)', 'on-tertiary-fixed-variant':'var(--on-tertiary-fixed-variant)',
+      background:'var(--surface)', 'on-background':'var(--on-surface)', 'surface-variant':'var(--surface-variant)',
+      violet:'var(--violet)'
+    },
+    borderRadius: { DEFAULT:'0.5rem', lg:'0.75rem', xl:'1rem', full:'9999px' },
+    spacing: { 'space-xs':'0.25rem','space-sm':'0.5rem','space-md':'1rem','space-lg':'1.5rem','space-xl':'2.5rem',
+      gutter:'1.25rem','gutter-mobile':'0.75rem', margin:'2.5rem','margin-mobile':'1.25rem' },
+    fontFamily: {
+      display:['Playfair Display','Georgia','serif'],
+      'headline-lg':['Playfair Display','Georgia','serif'], 'headline-lg-mobile':['Playfair Display','Georgia','serif'],
+      'headline-md':['Playfair Display','Georgia','serif'], 'headline-sm':['Playfair Display','Georgia','serif'],
+      'display-mobile':['Playfair Display','Georgia','serif'],
+      'body-lg':['Plus Jakarta Sans','system-ui','sans-serif'], 'body-md':['Plus Jakarta Sans','system-ui','sans-serif'], 'body-sm':['Plus Jakarta Sans','system-ui','sans-serif'],
+      'label-lg':['Plus Jakarta Sans','system-ui','sans-serif'], 'label-md':['Plus Jakarta Sans','system-ui','sans-serif'], 'label-sm':['Plus Jakarta Sans','system-ui','sans-serif'],
+      mono:['JetBrains Mono','monospace']
+    },
+    fontSize: {
+      'headline-lg-mobile':['26px',{lineHeight:'34px',fontWeight:'600'}],
+      'label-sm':['11px',{lineHeight:'14px',letterSpacing:'0.04em',fontWeight:'600'}],
+      'body-md':['15px',{lineHeight:'24px',fontWeight:'400'}],
+      'label-lg':['14px',{lineHeight:'20px',letterSpacing:'0.02em',fontWeight:'600'}],
+      'display-mobile':['36px',{lineHeight:'44px',letterSpacing:'-0.01em',fontWeight:'600'}],
+      'headline-md':['24px',{lineHeight:'32px',fontWeight:'500'}],
+      'body-sm':['13px',{lineHeight:'20px',fontWeight:'400'}],
+      display:['48px',{lineHeight:'56px',letterSpacing:'-0.02em',fontWeight:'600'}],
+      'headline-sm':['20px',{lineHeight:'28px',fontWeight:'500'}],
+      'headline-lg':['32px',{lineHeight:'40px',fontWeight:'600'}],
+      'label-md':['12px',{lineHeight:'16px',letterSpacing:'0.03em',fontWeight:'600'}],
+      'body-lg':['18px',{lineHeight:'28px',fontWeight:'400'}]
+    }
+  }}
+};
+</script>
 <style>
+  /* Warm Editorial Vocabulary Journal — Stitch tasarım sisteminden birebir alınan
+     Material-3 renk token sistemi. Açık tema Stitch'in ürettiği tam paletle aynı;
+     koyu tema aynı ton ailesinden (fixed/inverse rolleri referans alınarak) türetildi. */
   :root{
-    --ink:#1B1220; --ink-2:#271A2D; --ink-3:#33233B; --line:#4A3552;
-    --paper:#F4EDE3; --paper-dim:#C6B7C4; --muted:#7C6884;
-    --saffron:#E8B33C; --mint:#79D2A6; --rose:#E4728C; --sky:#7FB6E8; --violet:#B49AE8;
-    --back-a:#2E2036; --back-b:#241830; --glow:#3A2440;
-    --display:'Fraunces',Georgia,serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',monospace;
+    --surface:#18121c; --surface-dim:#140f17; --surface-bright:#3a2f40;
+    --surface-container-lowest:#110d14; --surface-container-low:#201a26; --surface-container:#241d2b;
+    --surface-container-high:#2f2735; --surface-container-highest:#3a3140;
+    --on-surface:#f0e6ec; --on-surface-variant:#d8c7bb;
+    --outline:#9c8d93; --outline-variant:#4a3f46;
+    --inverse-surface:#eeddf3; --inverse-on-surface:#332a39; --inverse-primary:#8d4f00;
+    --primary:#ffb876; --on-primary:#4d2800; --primary-container:#6b3b00; --on-primary-container:#ffdcc0;
+    --secondary:#aacbde; --on-secondary:#0d2631; --secondary-container:#2a4b5a; --on-secondary-container:#c6e7fb;
+    --tertiary:#a0d2b2; --on-tertiary:#063920; --tertiary-container:#204f37; --on-tertiary-container:#bbeecd;
+    --error:#ffb4ab; --on-error:#690005; --error-container:#93000a; --on-error-container:#ffdad6;
+    --primary-fixed:#ffdcc0; --primary-fixed-dim:#ffb876; --on-primary-fixed:#2d1600; --on-primary-fixed-variant:#6b3b00;
+    --secondary-fixed:#c6e7fb; --secondary-fixed-dim:#aacbde; --on-secondary-fixed:#001e2b; --on-secondary-fixed-variant:#2a4b5a;
+    --tertiary-fixed:#bbeecd; --tertiary-fixed-dim:#a0d2b2; --on-tertiary-fixed:#002112; --on-tertiary-fixed-variant:#204f37;
+    --surface-variant:#4a3f46; --violet:#c9b6dd;
+
+    /* Eski (legacy) değişken isimleri — henüz Tailwind'e taşınmamış bölümler
+       (Eşleştirme, Cümle Kurma, Dilbilgisi, Kalıplar, giriş ekranı) bunları kullanmaya devam ediyor. */
+    --ink:var(--surface); --ink-2:var(--surface-container-lowest); --ink-3:var(--surface-container-low); --line:var(--outline-variant);
+    --paper:var(--on-surface); --paper-dim:var(--on-surface-variant); --muted:var(--outline);
+    --saffron:var(--primary); --mint:var(--tertiary); --rose:var(--error); --sky:var(--secondary);
+    --back-a:#241830; --back-b:#18121e; --glow:#2d2138;
+    --display:'Playfair Display',Georgia,serif; --body:'Plus Jakarta Sans',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
   }
   :root[data-theme="light"]{
-    --ink:#F2EAE0; --ink-2:#FFFFFF; --ink-3:#FBF3E8; --line:#E1D3CC;
-    --paper:#241830; --paper-dim:#8A7690; --muted:#A392A0;
-    --saffron:#B8791A; --mint:#1E8A5F; --rose:#C23A5E; --sky:#2E6FB0; --violet:#6B4FB8;
-    --back-a:#FFFFFF; --back-b:#F3EAF6; --glow:#FBE9C7;
+    --surface:#fff7fd; --surface-dim:#e5d4eb; --surface-bright:#fff7fd;
+    --surface-container-lowest:#ffffff; --surface-container-low:#fdefff; --surface-container:#fae8ff;
+    --surface-container-high:#f4e2f9; --surface-container-highest:#eeddf3;
+    --on-surface:#221828; --on-surface-variant:#534438;
+    --outline:#857466; --outline-variant:#d8c3b3;
+    --inverse-surface:#372c3d; --inverse-on-surface:#fbecff; --inverse-primary:#ffb876;
+    --primary:#8d4f00; --on-primary:#ffffff; --primary-container:#d4883b; --on-primary-container:#4d2800;
+    --secondary:#436373; --on-secondary:#ffffff; --secondary-container:#c3e5f8; --on-secondary-container:#476777;
+    --tertiary:#39684e; --on-tertiary:#ffffff; --tertiary-container:#74a487; --on-tertiary-container:#053923;
+    --error:#ba1a1a; --on-error:#ffffff; --error-container:#ffdad6; --on-error-container:#93000a;
+    --primary-fixed:#ffdcc0; --primary-fixed-dim:#ffb876; --on-primary-fixed:#2d1600; --on-primary-fixed-variant:#6b3b00;
+    --secondary-fixed:#c6e7fb; --secondary-fixed-dim:#aacbde; --on-secondary-fixed:#001e2b; --on-secondary-fixed-variant:#2a4b5a;
+    --tertiary-fixed:#bbeecd; --tertiary-fixed-dim:#a0d2b2; --on-tertiary-fixed:#002112; --on-tertiary-fixed-variant:#204f37;
+    --surface-variant:#eeddf3; --violet:#6f5d82;
+
+    --back-a:#fff7fd; --back-b:#fae8ff; --glow:#ffdcc0;
   }
   [hidden]{display:none !important}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -76,11 +160,16 @@
   .topbar.stuck .gen{display:none}
   .topbar.stuck.gen-open .gen{display:flex}
 
-  nav{display:flex;gap:2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-  nav button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;color:var(--paper-dim);font-weight:500;padding:10px 16px;min-height:44px}
-  nav button[aria-selected="true"]{color:var(--paper);border-bottom-color:var(--saffron)}
-  nav button:hover{filter:none;color:var(--paper)}
-  .badge{font-family:var(--mono);font-size:10px;background:var(--saffron);color:#231708;border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:600}
+  nav[role="tablist"]{flex-wrap:nowrap !important;scrollbar-width:none}
+  nav[role="tablist"]::-webkit-scrollbar{display:none}
+  .nav-tab{position:relative;padding:0 0 8px;margin:0;min-height:0;background:none;border:none;
+    font-family:var(--body);font-size:14px;font-weight:500;letter-spacing:.01em;color:var(--on-surface-variant);
+    white-space:nowrap;cursor:pointer;transition:color .15s ease}
+  .nav-tab:hover{filter:none;color:var(--on-surface)}
+  .nav-tab[aria-selected="true"]{color:var(--on-surface);font-weight:600}
+  .nav-tab[aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--primary-container);border-radius:999px}
+  #langSwitch button.active{background:var(--primary-container);color:var(--on-primary-container);font-weight:700}
+  .badge{font-family:var(--mono);font-size:10px;background:var(--primary);color:var(--on-primary);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:600}
   main{padding-top:24px}
 
   .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
@@ -201,7 +290,7 @@
 
   .gate{max-width:380px;margin:6vh auto 0;text-align:center;display:flex;flex-direction:column;gap:14px}
   .gate .lead{color:var(--paper-dim);line-height:1.6;margin:0 0 8px}
-  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#F4EDE3;color:#231708;font-size:15px;padding:13px 22px;width:100%}
+  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#FCFAF6;color:#261C2C;font-size:15px;padding:13px 22px;width:100%}
   .gbtn svg{width:18px;height:18px;flex:none}
   .or{display:flex;align-items:center;gap:12px;color:var(--paper-dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
   .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -306,57 +395,71 @@
     <p class="note">Misafir destesi sadece bu tarayıcıda durur. Sonra giriş yaparsan hesabına aktarabilirsin.</p>
   </div>
 
-  <div id="app" hidden>
-    <div class="topbar" id="topbar">
-      <header>
-        <h1 id="appTitle">Kelime <em>Defteri</em></h1>
-        <div>
-          <div class="controls-row">
-            <button type="button" class="theme-toggle" id="tutBtn" aria-label="Nasıl kullanılır?">?</button>
-            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Temayı değiştir"></button>
-            <div class="langsw" id="langSwitch">
-              <button type="button" data-lang="en">EN</button>
-              <button type="button" data-lang="de">DE</button>
-              <button type="button" data-lang="fr">FR</button>
-              <button type="button" data-lang="zh">ZH</button>
+  <div id="app" hidden class="min-h-screen bg-surface text-on-surface font-body-md antialiased">
+    <header class="sticky top-0 z-50 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(38,28,44,0.08)] transition-colors" id="topbar">
+      <div class="max-w-7xl mx-auto px-4 md:px-margin pt-3">
+        <div class="flex items-center justify-between gap-3 pb-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <svg class="h-8 w-8 rounded-lg shrink-0" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100" height="100" rx="24" fill="var(--on-primary-fixed-variant)"/>
+              <path d="M50 30 C 44 26, 32 26, 22 28 C 20.9 28.2, 20 29.1, 20 30.2 L 20 72 C 20 73.1, 20.9 74, 22 74 C 32 72, 44 72, 50 76 C 56 72, 68 72, 78 74 C 79.1 74, 80 73.1, 80 72 L 80 30.2 C 80 29.1, 79.1 28.2, 78 28 C 68 26, 56 26, 50 30 Z" fill="var(--primary-fixed)" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round"/>
+              <line x1="50" y1="30" x2="50" y2="76" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="65" cy="56" r="5" fill="var(--primary)"/>
+            </svg>
+            <div class="flex flex-col min-w-0 leading-none">
+              <span class="font-headline-sm text-headline-sm text-on-surface truncate" id="appTitle">Kelime <em class="not-italic text-primary">Defteri</em></span>
+              <span class="font-label-sm text-label-sm text-on-surface-variant italic hidden sm:inline">Kişisel Dil Günlüğü</span>
             </div>
           </div>
-          <div class="stats" id="stats"></div>
-          <div class="who" id="who"></div>
+          <div class="flex items-center gap-1.5 md:gap-2 shrink-0">
+            <div class="hidden sm:flex items-center p-0.5 rounded-full bg-surface-container-low shadow-sm" id="langSwitch">
+              <button type="button" data-lang="en" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">EN</button>
+              <button type="button" data-lang="de" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">DE</button>
+              <button type="button" data-lang="fr" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">FR</button>
+              <button type="button" data-lang="zh" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">ZH</button>
+            </div>
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface" title="Çalışma serisi — art arda kaç gündür tekrar yapıyorsun">
+              <span class="text-sm leading-none">🔥</span><span class="font-label-sm text-label-sm font-semibold" id="streakDays">0 gün</span>
+            </div>
+            <button type="button" id="tutBtn" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" aria-label="Nasıl kullanılır?"><span class="material-symbols-outlined text-[18px]">help</span></button>
+            <button type="button" id="themeToggle" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" aria-label="Temayı değiştir"><span class="material-symbols-outlined text-[18px]" id="themeIcon">dark_mode</span></button>
+            <div id="who" class="who"></div>
+          </div>
         </div>
-      </header>
-      <div id="guestBar" class="guest-bar" hidden>
-        <span>Misafir modundasın — desten sadece bu tarayıcıda duruyor.</span>
-        <button id="toLoginBtn">Giriş yap</button>
+        <div id="guestBar" class="flex items-center justify-between gap-2 flex-wrap bg-primary-fixed/40 border-l-4 border-primary rounded-lg px-3 py-2 mb-2 text-body-sm text-on-surface" hidden>
+          <span>Misafir modundasın — desten sadece bu tarayıcıda duruyor.</span>
+          <button id="toLoginBtn" class="px-3 py-1.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-semibold shrink-0">Giriş yap</button>
+        </div>
+        <div class="flex flex-wrap items-stretch gap-2 pb-2.5">
+          <input id="wordInput" class="flex-1 min-w-[200px] px-3.5 py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/25 transition-all" placeholder="Kelime veya cümle/kalıp yaz (birden fazlaysa virgülle ayır) ve Enter'a bas" autocomplete="off">
+          <button type="button" id="gearBtn" class="w-11 shrink-0 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface flex items-center justify-center" aria-label="Üretme ayarları"><span class="material-symbols-outlined text-[20px]">tune</span></button>
+          <button type="button" id="addBtn" class="shrink-0 px-5 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold hover:shadow-[0_6px_16px_rgba(212,136,59,0.28)] transition-all">Karta çevir</button>
+        </div>
+        <div class="gen hidden flex-wrap gap-2.5 items-center bg-surface-container-low rounded-lg p-2.5 mb-2.5" id="genPanel">
+          <label for="level" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Seviye</label>
+          <select id="level" class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
+          <label for="topic" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Konu</label>
+          <input id="topic" class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm flex-1 min-w-[140px]" placeholder="serbest (örn. iş hayatı)">
+          <label for="howmany" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Adet</label>
+          <select id="howmany" class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm"><option>5</option><option selected>8</option><option>12</option></select>
+          <button type="button" id="genBtn" class="px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold shadow-sm">En sık kullanılanları getir</button>
+        </div>
+        <nav role="tablist" class="flex items-center gap-5 overflow-x-auto pb-0 -mb-px" id="mainNav" style="scrollbar-width:none">
+          <button type="button" role="tab" aria-selected="true" data-tab="study" class="nav-tab">Bugün<span class="badge" id="dueBadge" hidden></span></button>
+          <button type="button" role="tab" aria-selected="false" data-tab="leech" class="nav-tab">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
+          <button type="button" role="tab" aria-selected="false" data-tab="deck" class="nav-tab">Deste</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="quiz" class="nav-tab">Alıştırma</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="match" class="nav-tab">Eşleştirme</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="reading" class="nav-tab">Okuma &amp; Pinyin</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="write" class="nav-tab">Cümle Kurma</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="phrases" class="nav-tab">Kalıplar</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="grammar" class="nav-tab">Dilbilgisi</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="test" class="nav-tab">Genel Test<span class="badge" id="wrongBadge" hidden></span></button>
+        </nav>
       </div>
-      <div class="entry">
-        <input id="wordInput" placeholder="Kelime veya cümle/kalıp yaz (birden fazlaysa virgülle ayır) ve Enter'a bas" autocomplete="off">
-        <button class="ghost gear" id="gearBtn" aria-label="Üretme ayarları">⚙</button>
-        <button id="addBtn">Karta çevir</button>
-      </div>
-      <div class="gen">
-        <label for="level">Seviye</label>
-        <select id="level"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
-        <label for="topic">Konu</label>
-        <input id="topic" placeholder="serbest (örn. iş hayatı)" style="width:170px">
-        <label for="howmany">Adet</label>
-        <select id="howmany"><option>5</option><option selected>8</option><option>12</option></select>
-        <button class="ghost" id="genBtn">En sık kullanılanları getir</button>
-      </div>
-      <nav role="tablist">
-        <button role="tab" aria-selected="true" data-tab="study">Tekrar<span class="badge" id="dueBadge" hidden></span></button>
-        <button role="tab" aria-selected="false" data-tab="leech">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
-        <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
-        <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
-        <button role="tab" aria-selected="false" data-tab="match">Eşleştirme</button>
-        <button role="tab" aria-selected="false" data-tab="test">Genel Test<span class="badge" id="wrongBadge" hidden></span></button>
-        <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
-        <button role="tab" aria-selected="false" data-tab="phrases">Kalıplar</button>
-        <button role="tab" aria-selected="false" data-tab="reading">Okuma</button>
-        <button role="tab" aria-selected="false" data-tab="grammar">Dilbilgisi</button>
-      </nav>
-    </div>
-    <main>
+    </header>
+    <main class="max-w-7xl mx-auto px-4 md:px-margin py-space-lg">
+      <div id="stats" class="hidden"></div>
       <section id="study"></section>
       <section id="leech" hidden></section>
       <section id="deck" hidden></section>
@@ -368,6 +471,9 @@
       <section id="reading" hidden></section>
       <section id="grammar" hidden></section>
     </main>
+    <footer class="w-full bg-surface-container-low/70 py-space-sm mt-6 shadow-[0_-1px_6px_rgba(38,28,44,0.05)]">
+      <div class="max-w-7xl mx-auto px-4 md:px-margin flex flex-col md:flex-row items-center justify-between gap-2 font-label-sm text-label-sm text-on-surface-variant" id="footerStats"></div>
+    </footer>
   </div>
 </div>
 
@@ -605,6 +711,93 @@ function renderStats(){
   const lb = $("#leechBadge");
   lb.hidden = !lc; lb.textContent = lc;
   updateWrongBadge();
+  renderFooterStats();
+}
+
+/* ---------- günlük hedef, seri ve puan sistemi ----------
+   Supabase şemasında bu alanlar yok (kart tablosuna dokunmuyoruz), bu yüzden
+   mevcut "test geçmişi / yanlış havuzu" örüntüsüyle aynı şekilde, dile göre
+   anahtarlanmış localStorage'da tutuluyor — cihazlar arası senkron olmaz ama
+   gerçek, çalışan bir özellik. */
+const STATS_KEY = () => `kelime-defteri:gunluk:${LANG}`;
+const GOAL_KEY = () => `kelime-defteri:hedef:${LANG}`;
+const DEFAULT_GOAL = 20;
+function todayStr(d = new Date()){ return d.toISOString().slice(0,10); }
+function yesterdayStr(){ return todayStr(new Date(Date.now() - DAY)); }
+function loadDailyStats(){
+  let s;
+  try{ s = JSON.parse(localStorage.getItem(STATS_KEY())); }catch(e){ s = null; }
+  const defaults = { date: todayStr(), newCount: 0, reviewCount: 0, points: 0, streakDays: 0, lastStudyDate: null, totalPoints: 0 };
+  if(!s) return defaults;
+  s = Object.assign({}, defaults, s);
+  if(s.date !== todayStr()){
+    // yeni gün: günlük sayaçları sıfırla ama seriyi/toplam puanı koru
+    s.date = todayStr();
+    s.newCount = 0; s.reviewCount = 0; s.points = 0;
+  }
+  return s;
+}
+function saveDailyStats(s){ try{ localStorage.setItem(STATS_KEY(), JSON.stringify(s)); }catch(e){ console.error(e); } }
+function dailyGoal(){
+  const v = parseInt(localStorage.getItem(GOAL_KEY()), 10);
+  return Number.isFinite(v) && v > 0 ? v : DEFAULT_GOAL;
+}
+function setDailyGoal(n){
+  n = Math.max(1, Math.min(200, parseInt(n,10) || DEFAULT_GOAL));
+  localStorage.setItem(GOAL_KEY(), String(n));
+  renderFooterStats();
+  if(!$("#study").hidden) renderStudy();
+}
+function recordStudyAction(isNew, points){
+  const s = loadDailyStats();
+  if(isNew) s.newCount++; else s.reviewCount++;
+  s.points += points;
+  s.totalPoints = (s.totalPoints || 0) + points;
+  const today = todayStr();
+  if(s.lastStudyDate !== today){
+    s.streakDays = (s.lastStudyDate === yesterdayStr()) ? s.streakDays + 1 : 1;
+    s.lastStudyDate = today;
+  }
+  saveDailyStats(s);
+}
+function recallRate(){
+  if(!deck.length) return null;
+  const totals = deck.reduce((m,c) => { m.reps += (c.reps||0) + (c.lapses||0); m.lapses += (c.lapses||0); return m; }, {reps:0, lapses:0});
+  if(!totals.reps) return null;
+  return Math.max(0, Math.round((1 - totals.lapses/totals.reps) * 100));
+}
+function lastReviewLabel(){
+  const last = deck.reduce((m,c) => c.lastDone && c.lastDone > m ? c.lastDone : m, 0);
+  if(!last) return "henüz yok";
+  const mins = Math.round((Date.now() - last) / 60000);
+  if(mins < 1) return "az önce";
+  if(mins < 60) return `${mins} dk önce`;
+  const hrs = Math.round(mins/60);
+  if(hrs < 24) return `${hrs} sa önce`;
+  return `${Math.round(hrs/24)} gün önce`;
+}
+function renderFooterStats(){
+  const s = loadDailyStats();
+  const goal = dailyGoal();
+  const done = s.newCount + s.reviewCount;
+  const pct = Math.min(100, Math.round((done/goal)*100));
+  const streakEl = $("#streakDays");
+  if(streakEl) streakEl.textContent = `${s.streakDays || 0} gün`;
+  const recall = recallRate();
+  const el = $("#footerStats");
+  if(el) el.innerHTML = `
+    <div class="flex items-center gap-space-md">
+      <span class="flex items-center gap-1.5 font-medium text-on-surface"><span class="material-symbols-outlined text-[15px] text-primary">menu_book</span>Bugün: ${done}/${goal} kelime</span>
+      <span class="text-outline-variant">•</span>
+      <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-tertiary">verified</span>Hatırlama: ${recall===null?"—":"%"+recall}</span>
+      <span class="text-outline-variant">•</span>
+      <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-secondary">schedule</span>Son tekrar: ${lastReviewLabel()}</span>
+    </div>
+    <div class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant bg-surface-container-lowest/80 px-3 py-1 rounded-full shadow-sm">
+      <span class="font-semibold text-on-surface">${pct}%</span><span>günlük hedef</span>
+      <span class="mx-1 text-outline-variant">•</span>
+      <span class="font-semibold text-on-surface">${s.points||0}</span><span>bugünkü puan</span>
+    </div>`;
 }
 function renderWho(){
   const el = $("#who");
@@ -678,18 +871,76 @@ function renderStudy(){
   current = queue.sort((a,b) => a.due - b.due)[0];
 
   const canSwipe = revealed && !grading;
+  const s = loadDailyStats();
+  const goal = dailyGoal();
+  const doneToday = s.newCount + s.reviewCount;
+  const pct = Math.min(100, Math.round((doneToday/goal)*100));
+  const ring = 2 * Math.PI * 15.9155;
+
   el.innerHTML = `
-    <div class="toolbar"><div class="save-state">${queue.length} kart sırada</div></div>
-    <div class="stage">
-      <div class="study ${canSwipe ? "grabbable" : ""}" id="cardStage">
-        <div class="stamp ok" id="stampOk">öğrendim</div>
-        <div class="stamp no" id="stampNo">tekrar sor</div>
-        <div class="meta" style="--pos:${posColor(current.pos)};margin-bottom:12px">${current.pos} · ${current.level||""}</div>
-        <div class="word" style="color:${posColor(current.pos)}">${wordLabel(current)} <button class="speak speak-lg" id="studySpeak" aria-label="Seslendir">🔊</button></div>
-        ${revealed ? `
-          <div class="answer">
-            <div class="tr">${current.tr}</div>
-            <div class="ex">${exampleHtml(current)}</div>
+    <div class="flex flex-col gap-space-lg">
+      <div class="w-full bg-surface-container-low rounded-xl p-space-md shadow-sm flex flex-col lg:flex-row items-center justify-between gap-space-md">
+        <div class="flex items-center gap-space-md w-full lg:w-auto">
+          <button type="button" id="goalRingBtn" class="relative w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0 cursor-pointer" title="Günlük hedefi değiştir">
+            <svg class="w-10 h-10 -rotate-90 transform" viewBox="0 0 36 36">
+              <path class="text-surface-variant" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+              <path class="text-primary-container" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="${(pct/100*ring).toFixed(1)}, ${ring.toFixed(1)}" stroke-linecap="round" stroke-width="3.2"></path>
+            </svg>
+            <span class="absolute font-label-sm text-label-sm font-semibold text-primary">${pct}%</span>
+          </button>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span class="font-headline-sm text-headline-sm text-on-surface">Bugünün Hedefi</span>
+              <button type="button" id="goalEditBtn" class="font-label-md text-label-md px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">${goal} Kelime</button>
+            </div>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">Tamamlanan: <strong class="text-on-surface">${doneToday} / ${goal}</strong> • Tekrar kuyruğunda <strong class="text-primary">${queue.length} kart</strong> bekliyor</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-sm w-full lg:w-auto justify-between lg:justify-end">
+          <div class="flex items-center gap-space-xs px-3 py-1.5 rounded-lg bg-surface-container-highest">
+            <span class="w-2 h-2 rounded-full bg-tertiary"></span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant">Yeni:</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">${s.newCount}</span>
+          </div>
+          <div class="flex items-center gap-space-xs px-3 py-1.5 rounded-lg bg-surface-container-highest">
+            <span class="w-2 h-2 rounded-full bg-primary-container"></span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant">Tekrar:</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">${s.reviewCount}</span>
+          </div>
+          <div class="flex items-center gap-space-xs px-3 py-1.5 rounded-lg bg-secondary-container/40">
+            <span class="material-symbols-outlined text-[16px] text-secondary">bolt</span>
+            <span class="font-label-sm text-label-sm text-on-secondary-container font-semibold">${s.points||0} puan</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+        <div class="lg:col-span-8 flex flex-col gap-space-md">
+          <div class="stage">
+            <div class="study ${canSwipe ? "grabbable" : ""}" id="cardStage">
+              <div class="stamp ok" id="stampOk">öğrendim</div>
+              <div class="stamp no" id="stampNo">tekrar sor</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
+                <div class="meta" style="--pos:${posColor(current.pos)}">${current.pos} · ${current.level||""}</div>
+                <button type="button" id="studySpeak" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low hover:bg-surface-container-high text-on-surface transition-colors" aria-label="Seslendir">
+                  <span class="material-symbols-outlined text-[16px] text-primary">volume_up</span>
+                  <span class="font-label-sm text-label-sm font-semibold">Dinle</span>
+                </button>
+              </div>
+              <div class="word" style="color:${posColor(current.pos)}">${wordLabel(current)}</div>
+              ${revealed ? `
+                <div class="answer">
+                  <div class="tr">${current.tr}</div>
+                  <div class="ex">${exampleHtml(current)}</div>
+                </div>
+                ${!grading ? `<div class="swipe-hint"><span>← tekrar sor</span><span>öğrendim →</span></div>` : ""}`
+              : `<div style="margin-top:26px"><button id="reveal">Cevabı göster</button></div>`}
+              <div class="kbd-hint">
+                ${!revealed ? `<span><kbd>Boşluk</kbd> cevabı göster</span>` :
+                  grading ? `<span><kbd>1</kbd>–<kbd>4</kbd> puanla</span>` :
+                  `<span><kbd>←</kbd> tekrar sor</span><span><kbd>→</kbd> öğrendim</span>`}
+              </div>
+            </div>
           </div>
           ${grading ? `
             <div class="grades">
@@ -697,13 +948,22 @@ function renderStudy(){
               <button class="g1" data-g="1">Zor<span>${peek(1)}</span></button>
               <button class="g2" data-g="2">İyi<span>${peek(2)}</span></button>
               <button class="g3" data-g="3">Kolay<span>${peek(3)}</span></button>
-            </div>`
-          : `<div class="swipe-hint"><span>← tekrar sor</span><span>öğrendim →</span></div>`}`
-        : `<div style="margin-top:26px"><button id="reveal">Cevabı göster</button></div>`}
-        <div class="kbd-hint">
-          ${!revealed ? `<span><kbd>Boşluk</kbd> cevabı göster</span>` :
-            grading ? `<span><kbd>1</kbd>–<kbd>4</kbd> puanla</span>` :
-            `<span><kbd>←</kbd> tekrar sor</span><span><kbd>→</kbd> öğrendim</span>`}
+            </div>` : ""}
+        </div>
+        <div class="lg:col-span-4 flex flex-col gap-space-md">
+          <div class="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-sm">
+            <div class="flex items-center gap-1.5 text-primary">
+              <span class="material-symbols-outlined text-[18px]">auto_stories</span>
+              <span class="font-label-md text-label-md uppercase tracking-wider font-semibold">Kültür &amp; Bağlam</span>
+            </div>
+            <div id="cultureNote" class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed"><p class="text-on-surface-variant/70">Kartı çevirince bu kelimeyle ilgili kısa bir not getireyim.</p></div>
+          </div>
+          <div class="bg-surface-container-low rounded-2xl p-space-md shadow-sm flex flex-col gap-space-sm">
+            <div class="flex items-center justify-between pb-1">
+              <span class="font-headline-sm text-headline-sm text-on-surface">Bugünkü Kelime Akışı</span>
+            </div>
+            <div class="flex flex-col gap-2" id="recentWordStream">${recentWordStreamHtml()}</div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -711,7 +971,56 @@ function renderStudy(){
   if(!revealed) $("#reveal").onclick = () => { revealed = true; renderStudy(); };
   el.querySelectorAll("[data-g]").forEach(b => b.onclick = () => grade(+b.dataset.g));
   $("#studySpeak").onclick = () => speak(speakText(current));
+  $("#goalRingBtn").onclick = $("#goalEditBtn").onclick = () => {
+    const v = prompt("Günlük kelime hedefin kaç olsun?", String(goal));
+    if(v !== null && v.trim()) setDailyGoal(v);
+  };
+  if(revealed) ensureCulturalNote(current); else renderCultureSidebar();
   if(canSwipe) enableSwipe();
+}
+
+/* ---------- kültür & bağlam notu (gerçek, AI'dan, kart başına önbelleğe alınır) ---------- */
+let culturalNote = null, culturalNoteFor = null, culturalLoading = false;
+async function ensureCulturalNote(card){
+  if(culturalNoteFor === card.id){ renderCultureSidebar(); return; }
+  culturalNoteFor = card.id; culturalNote = null; culturalLoading = true;
+  renderCultureSidebar();
+  try{
+    const r = await ask(`"${card.word}" (${LANG_NAMES[LANG]}) kelimesi/kalıbı hakkında, ${LANG_NAMES[LANG]} öğrenen bir Türk için ilginç, kısa (en fazla 2 cümle, 35 kelimeyi geçme) bir kültürel bağlam veya kullanım notu yaz. Sadece geçerli JSON döndür: {"note":"Türkçe kısa not"}`);
+    if(culturalNoteFor === card.id) culturalNote = r.note || null;
+  }catch(e){ if(culturalNoteFor === card.id) culturalNote = null; }
+  if(culturalNoteFor === card.id){ culturalLoading = false; renderCultureSidebar(); }
+}
+function renderCultureSidebar(){
+  const el = document.getElementById("cultureNote");
+  if(!el) return;
+  if(culturalLoading){ el.innerHTML = `<p class="loading">Hazırlanıyor…</p>`; return; }
+  if(culturalNote){ el.innerHTML = `<p>${culturalNote}</p>`; return; }
+  el.innerHTML = `<p class="text-on-surface-variant/70">Kartı çevirince bu kelimeyle ilgili kısa bir not getireyim.</p>`;
+}
+function recentWordStreamHtml(){
+  const withHist = deck.filter(c => Array.isArray(c.history) && c.history.length);
+  const todayKey = todayStr();
+  const items = withHist
+    .map(c => ({ c, t: Math.max(...c.history.map(h => h.t)) }))
+    .filter(x => todayStr(new Date(x.t)) === todayKey)
+    .sort((a,b) => b.t - a.t)
+    .slice(0,3);
+  if(!items.length) return `<div class="empty" style="padding:18px;font-size:12.5px">Bugün henüz tekrar yapmadın.</div>`;
+  return items.map(({c,t}) => `
+    <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-lowest hover:bg-surface-bright transition-all shadow-xs">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="font-headline-md text-headline-md font-semibold text-on-surface w-9 text-center shrink-0">${c.word.length <= 4 ? c.word : c.word.slice(0,2)+"…"}</span>
+        <div class="flex flex-col min-w-0">
+          <div class="flex items-center gap-1.5">
+            ${c.lang === "zh" && c.artikel ? `<span class="font-label-md text-label-md text-primary font-medium tracking-wide">${c.artikel}</span>` : ""}
+            <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">${c.pos}</span>
+          </div>
+          <span class="font-body-sm text-body-sm text-on-surface font-medium truncate">${c.tr}</span>
+        </div>
+      </div>
+      <span class="font-label-sm text-label-sm text-on-surface-variant shrink-0">${Math.max(1,Math.round((Date.now()-t)/60000))} dk önce</span>
+    </div>`).join("");
 }
 
 function peek(g){
@@ -720,21 +1029,26 @@ function peek(g){
 }
 function learned(){
   const card = current;
+  const wasNew = card.reps === 0;
   card.reps++;
   card.interval = 21;
   card.due = Date.now() + 21 * DAY;
   toast(`${card.word} · 21 gün sonra`);
   store.update(card);
+  recordStudyAction(wasNew, 15);
   roundIds?.delete(card.id);
   revealed = false; grading = false;
   renderStats(); renderStudy();
 }
+const GRADE_POINTS = {0:2, 1:5, 2:10, 3:15};
 function grade(g){
   const card = current;
+  const wasNew = card.reps === 0;
   schedule(card, g);
   const when = g === 0 ? "1 dakika" : (card.interval < 1 ? "1 günden az" : card.interval + " gün");
   toast(`${card.word} · ${when} sonra`);
   store.update(card);
+  recordStudyAction(wasNew, GRADE_POINTS[g] ?? 5);
   roundIds?.delete(card.id);
   revealed = false; grading = false;
   renderStats(); renderStudy();
@@ -858,22 +1172,71 @@ document.addEventListener("keydown", e => {
 
 /* ---------- deste ---------- */
 const POS_LIST = ["isim","fiil","sıfat","zarf","edat","bağlaç","ünlem","kalıp"];
-let deckFilter = { due:"all", level:"all", pos:"all", sort:"due" };
-let deckFilterOpen = false;
+const DECK_PAGE_SIZE = 12;
+let deckFilter = { level:"all", pos:"all", sort:"due", q:"", view:"grid", page:1 };
 
+function cardSuccessPct(c){
+  const total = (c.reps||0) + (c.lapses||0);
+  if(!total) return null;
+  return Math.max(0, Math.min(100, Math.round((1 - (c.lapses||0)/total) * 100)));
+}
 function filterDeck(){
-  const now = Date.now();
+  const q = deckFilter.q.trim().toLowerCase();
   let list = deck.filter(w => {
-    if(deckFilter.due === "today" && !(w.due <= now)) return false;
-    if(deckFilter.due === "week" && !(w.due > now && w.due <= now + 7*DAY)) return false;
-    if(deckFilter.due === "postponed" && !(w.due > now + 7*DAY)) return false;
     if(deckFilter.level !== "all" && w.level !== deckFilter.level) return false;
     if(deckFilter.pos !== "all" && w.pos !== deckFilter.pos) return false;
+    if(q && !(w.word.toLowerCase().includes(q) || (w.artikel||"").toLowerCase().includes(q) || (w.tr||"").toLowerCase().includes(q))) return false;
     return true;
   });
   if(deckFilter.sort === "lapses") list.sort((a,b) => (b.lapses||0) - (a.lapses||0) || a.due - b.due);
+  else if(deckFilter.sort === "alpha") list.sort((a,b) => (a.artikel||a.word).localeCompare(b.artikel||b.word));
+  else if(deckFilter.sort === "accuracy") list.sort((a,b) => (cardSuccessPct(a)??101) - (cardSuccessPct(b)??101));
   else list.sort((a,b) => a.due - b.due);
   return list;
+}
+
+function deckLevelsPresent(){
+  return [...new Set(deck.map(c => c.level).filter(Boolean))].sort();
+}
+function deckPosCounts(){
+  const m = {};
+  deck.forEach(c => { m[c.pos] = (m[c.pos]||0) + 1; });
+  return m;
+}
+
+function deckCardHtml(w, idx){
+  const pct = cardSuccessPct(w);
+  const stripColors = ["#8C7B9B","#69A297","#D97D78","#84A98C","#4A7C59","#6B8E9F","#D4883B","#5A879E"];
+  const strip = stripColors[idx % stripColors.length];
+  const statusHtml = w.lapses >= LEECH_THRESHOLD
+    ? `<span class="flex items-center gap-1 text-error font-medium"><span class="material-symbols-outlined text-[14px]">replay</span>Tekrar Gerekiyor</span><span class="text-error font-semibold">Zorlandı</span>`
+    : `<span class="flex items-center gap-1 text-tertiary font-medium"><span class="material-symbols-outlined text-[14px]">check_circle</span>${pct===null?"Henüz test edilmedi":`Başarı: %${pct}`}</span><span class="text-on-surface-variant/60">${dueLabel(w)} sonra</span>`;
+  return `
+  <article class="group relative bg-surface-container-lowest rounded-xl shadow-[0_4px_16px_-2px_rgba(38,28,44,0.08),0_1px_3px_0_rgba(38,28,44,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(38,28,44,0.14)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden flex flex-col justify-between" data-id="${w.id}">
+    <div class="absolute left-0 top-0 bottom-0 w-1.5" style="background:${strip}"></div>
+    <div class="p-space-lg pl-7 flex flex-col">
+      <div class="flex items-center justify-between mb-space-md">
+        <span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm font-semibold tracking-wide" style="background:${strip}26;color:${strip}">${w.pos}${w.level?` • ${w.level}`:""}</span>
+        <div class="flex items-center gap-1">
+          <button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low transition-colors" data-speak="${w.id}" title="Sesli Oku"><span class="material-symbols-outlined text-[18px]">volume_up</span></button>
+          <button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant/40 hover:text-error transition-colors" data-del="${w.id}" title="Sil"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+        </div>
+      </div>
+      <div class="mb-space-sm">
+        <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-wide group-hover:text-primary transition-colors">${w.word}</h2>
+        <div class="flex items-center gap-2 mt-0.5">
+          ${w.artikel ? `<span class="font-label-md text-label-md tracking-wider font-medium" style="color:${strip}">${w.artikel}</span><span class="text-outline-variant/40">•</span>` : ""}
+          <span class="font-label-sm text-label-sm text-on-surface-variant/70">${w.tr}</span>
+        </div>
+      </div>
+      ${w.example ? `<div class="mt-space-sm p-space-sm bg-surface-container-low/50 rounded-lg">
+        <p class="font-body-sm text-body-sm text-on-surface/90 italic leading-relaxed">${exampleHtml(w)}</p>
+      </div>` : ""}
+    </div>
+    <div class="px-space-lg pl-7 py-space-xs bg-surface-container-low/40 flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+      ${statusHtml}
+    </div>
+  </article>`;
 }
 
 function renderDeck(){
@@ -882,71 +1245,102 @@ function renderDeck(){
     el.innerHTML = `<div class="empty"><b>Defter boş</b>İlk kelimeni ekleyince kartlar burada birikir.</div>`;
     return;
   }
-  const list = filterDeck();
-  const opt = (val, label, cur) => `<option value="${val}" ${val===cur?"selected":""}>${label}</option>`;
-  const activeCount = ["due","level","pos"].filter(k => deckFilter[k] !== "all").length;
-  el.innerHTML = `
-    <div class="toolbar deck-toolbar">
-      <div class="save-state">${list.length}${list.length !== deck.length ? ` / ${deck.length}` : ""} kelime</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="sortSelect">
-          ${opt("due","Sıradaki tekrara göre",deckFilter.sort)}
-          ${opt("lapses","En çok zorlandıklarım",deckFilter.sort)}
-        </select>
-        <button class="ghost" id="filterToggle">Filtrele${activeCount ? `<span class="badge">${activeCount}</span>` : ""}</button>
-      </div>
-    </div>
-    ${deckFilterOpen ? `
-    <div class="deck-filters">
-      <select id="dueFilter">
-        ${opt("all","Tüm zamanlar",deckFilter.due)}
-        ${opt("today","Bugün",deckFilter.due)}
-        ${opt("week","Bu hafta",deckFilter.due)}
-        ${opt("postponed","Ertelenmiş (7+ gün)",deckFilter.due)}
-      </select>
-      <select id="levelFilter">
-        ${opt("all","Tüm seviyeler",deckFilter.level)}
-        ${["A1","A2","B1","B2","C1"].map(l=>opt(l,l,deckFilter.level)).join("")}
-      </select>
-      <select id="posFilter">
-        ${opt("all","Tüm türler",deckFilter.pos)}
-        ${POS_LIST.map(p=>opt(p,p,deckFilter.pos)).join("")}
-      </select>
-      ${activeCount ? `<button class="ghost" id="clearFilters">Temizle</button>` : ""}
-    </div>` : ""}
-    ${list.length ? `<div class="deck">` + list.map(w => `
-    <div class="card" tabindex="0" role="button" aria-label="${w.word} kartını çevir">
-      <div class="inner">
-        <div class="face" style="--pos:${posColor(w.pos)}">
-          <button class="del" data-del="${w.id}" aria-label="Sil">×</button>
-          ${w.lapses ? `<div class="lapses">⚠ ${w.lapses}</div>` : ""}
-          <div class="term">${wordLabel(w)} <button class="speak" data-speak="${w.id}" aria-label="Seslendir">🔊</button></div>
-          <div>
-            <div class="meta">${w.pos} · ${w.level||""}</div>
-            <div class="due ${w.due <= Date.now() ? "now":""}">tekrar: ${dueLabel(w)}</div>
-          </div>
-          <div class="bar"><i style="width:${maturity(w)*100}%"></i></div>
-        </div>
-        <div class="face back" style="--pos:${posColor(w.pos)}">
-          <div class="tr">${w.tr}</div>
-          <div class="ex">${exampleHtml(w)}</div>
-        </div>
-      </div>
-    </div>`).join("") + `</div>`
-    : `<div class="empty"><b>Sonuç yok</b>Bu filtreye uyan kelime yok.</div>`}`;
+  const allFiltered = filterDeck();
+  const totalPages = Math.max(1, Math.ceil(allFiltered.length / DECK_PAGE_SIZE));
+  deckFilter.page = Math.min(deckFilter.page, totalPages);
+  const list = allFiltered.slice((deckFilter.page-1)*DECK_PAGE_SIZE, deckFilter.page*DECK_PAGE_SIZE);
+  const levels = deckLevelsPresent();
+  const posCounts = deckPosCounts();
+  const recallPct = recallRate();
 
-  $("#sortSelect").onchange = e => { deckFilter.sort = e.target.value; renderDeck(); };
-  $("#filterToggle").onclick = () => { deckFilterOpen = !deckFilterOpen; renderDeck(); };
-  if(deckFilterOpen){
-    $("#dueFilter").onchange = e => { deckFilter.due = e.target.value; renderDeck(); };
-    $("#levelFilter").onchange = e => { deckFilter.level = e.target.value; renderDeck(); };
-    $("#posFilter").onchange = e => { deckFilter.pos = e.target.value; renderDeck(); };
-    const clearBtn = $("#clearFilters");
-    if(clearBtn) clearBtn.onclick = () => {
-      deckFilter.due = "all"; deckFilter.level = "all"; deckFilter.pos = "all";
-      renderDeck();
-    };
-  }
+  const levelBtn = (val,label) => `<button type="button" data-level="${val}" class="px-2.5 py-1 rounded font-label-sm text-label-sm transition-colors ${deckFilter.level===val?"bg-surface-container-lowest text-primary font-semibold shadow-xs":"text-on-surface-variant hover:text-on-surface"}">${label}</button>`;
+  const posBtn = (val,label,count) => `<button type="button" data-pos="${val}" class="px-3.5 py-1.5 rounded-full font-label-sm text-label-sm transition-all flex items-center gap-1.5 ${deckFilter.pos===val?"bg-primary text-on-primary font-medium shadow-sm":"bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"}"><span>${label}</span><span class="${deckFilter.pos===val?"bg-on-primary/20":"bg-surface-container-highest"} px-1.5 py-0.2 rounded-full text-[10px]">${count}</span></button>`;
+
+  el.innerHTML = `
+    <div class="relative w-full">
+      <section class="flex flex-col gap-space-lg mb-space-xl">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+          <div>
+            <div class="flex items-center gap-space-xs font-label-md text-label-md uppercase tracking-widest text-primary mb-1">
+              <span class="inline-block w-2 h-2 rounded-full bg-primary"></span>
+              <span>${LANG_NAMES[LANG]} Sözlük Koleksiyonu</span>
+            </div>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Kelime Defteri Kataloğu</h1>
+            <p class="font-body-md text-body-md text-on-surface-variant max-w-xl mt-1">Toplam ${deck.length} editoryal kelime kartı. Telaffuz ve bağlam cümleleriyle bezeli kişisel kütüphanen.</p>
+          </div>
+          <div class="flex items-center gap-space-md bg-surface-container-low px-space-md py-space-sm rounded-xl shadow-sm self-start md:self-auto">
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">auto_stories</span></div>
+            <div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant">Deste</span><span class="font-headline-sm text-headline-sm text-on-surface leading-tight">${deck.length} kelime</span></div>
+            <div class="h-8 w-px bg-outline-variant/30 mx-1"></div>
+            <div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant">Ezber Gücü</span><span class="font-headline-sm text-headline-sm text-tertiary leading-tight">${recallPct===null?"—":"%"+recallPct}</span></div>
+          </div>
+        </div>
+        <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-[0_4px_20px_-4px_rgba(38,28,44,0.08)] flex flex-col gap-space-md">
+          <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+            <div class="relative flex-1">
+              <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/70 text-[20px]">search</span>
+              <input id="deckSearch" value="${deckFilter.q.replace(/"/g,'&quot;')}" class="w-full pl-11 pr-4 py-2.5 rounded-lg bg-surface-container-low/60 text-on-surface font-body-md text-body-md placeholder:text-on-surface-variant/50 focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Kelime, pinyin veya Türkçe anlam ara…" type="text">
+            </div>
+            <div class="flex flex-wrap items-center gap-space-sm justify-between lg:justify-end">
+              <div class="flex items-center bg-surface-container-low p-1 rounded-lg" id="levelFilterRow">
+                <span class="px-2 font-label-sm text-label-sm text-on-surface-variant">Seviye:</span>
+                ${levelBtn("all","Tümü")}
+                ${levels.map(l => levelBtn(l,l)).join("")}
+              </div>
+              <div class="relative flex items-center bg-surface-container-low px-3 py-1.5 rounded-lg text-on-surface-variant">
+                <span class="material-symbols-outlined text-[18px] mr-1.5 text-primary">sort</span>
+                <select id="deckSort" class="bg-transparent font-label-sm text-label-sm text-on-surface focus:outline-none cursor-pointer appearance-none">
+                  <option value="due" ${deckFilter.sort==="due"?"selected":""}>Sıradaki tekrara göre</option>
+                  <option value="lapses" ${deckFilter.sort==="lapses"?"selected":""}>En çok zorlanılan</option>
+                  <option value="alpha" ${deckFilter.sort==="alpha"?"selected":""}>Alfabetik</option>
+                  <option value="accuracy" ${deckFilter.sort==="accuracy"?"selected":""}>Başarı oranına göre</option>
+                </select>
+              </div>
+              <div class="flex items-center bg-surface-container-low p-1 rounded-lg">
+                <button type="button" id="view-grid" class="p-1.5 rounded ${deckFilter.view==="grid"?"bg-surface-container-lowest text-primary shadow-xs":"text-on-surface-variant"}" title="Geniş Grid"><span class="material-symbols-outlined text-[18px]">grid_view</span></button>
+                <button type="button" id="view-list" class="p-1.5 rounded ${deckFilter.view==="list"?"bg-surface-container-lowest text-primary shadow-xs":"text-on-surface-variant"}" title="Kompakt Liste"><span class="material-symbols-outlined text-[18px]">view_agenda</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between overflow-x-auto pt-1 gap-space-sm" id="posFilterRow" style="scrollbar-width:none">
+            <div class="flex items-center gap-space-xs">
+              ${posBtn("all","Tümü",deck.length)}
+              ${POS_LIST.filter(p => posCounts[p]).map(p => posBtn(p, p.charAt(0).toUpperCase()+p.slice(1), posCounts[p])).join("")}
+            </div>
+            <div class="hidden sm:flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant/80 whitespace-nowrap pl-4">
+              <span class="material-symbols-outlined text-[15px] text-tertiary">filter_list</span>
+              <span>${allFiltered.length} kart gösteriliyor</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      ${list.length ? `<section class="grid grid-cols-1 ${deckFilter.view==="grid"?"md:grid-cols-2 lg:grid-cols-4":""} gap-space-lg mb-space-xl" id="deckGrid">
+        ${list.map((w,i) => deckCardHtml(w,i)).join("")}
+      </section>` : `<div class="empty"><b>Sonuç yok</b>Bu filtreye uyan kelime yok.</div>`}
+      ${totalPages > 1 ? `
+      <footer class="pt-space-sm pb-space-lg flex flex-col sm:flex-row items-center justify-between gap-space-md">
+        <div class="flex items-center gap-space-md text-on-surface-variant font-label-md text-label-md">
+          <div class="flex items-center gap-1 bg-surface-container-lowest px-3 py-1.5 rounded-full shadow-xs">
+            <span class="material-symbols-outlined text-[16px] text-primary">menu_book</span>
+            <span class="font-headline-sm text-[16px] text-on-surface leading-none">Sayfa ${deckFilter.page}</span><span class="text-outline-variant">/</span><span>${totalPages}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-xs">
+          <button type="button" id="deckPrevPage" class="px-3 py-1.5 rounded-lg font-label-sm text-label-sm flex items-center gap-1 ${deckFilter.page<=1?"text-on-surface-variant/40 bg-surface-container-low cursor-not-allowed":"text-on-surface bg-surface-container-lowest hover:bg-surface-container-high"}" ${deckFilter.page<=1?"disabled":""}><span class="material-symbols-outlined text-[16px]">arrow_back</span>Önceki</button>
+          <button type="button" id="deckNextPage" class="px-4 py-1.5 rounded-lg font-label-sm text-label-sm text-on-surface bg-surface-container-lowest hover:bg-primary-container hover:text-on-primary-container transition-all flex items-center gap-1.5 font-medium ${deckFilter.page>=totalPages?"opacity-40 cursor-not-allowed":""}" ${deckFilter.page>=totalPages?"disabled":""}>Sonraki<span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>
+        </div>
+      </footer>` : ""}
+    </div>`;
+
+  $("#deckSearch").oninput = e => { deckFilter.q = e.target.value; deckFilter.page = 1; renderDeck(); };
+  $("#deckSort").onchange = e => { deckFilter.sort = e.target.value; renderDeck(); };
+  $("#view-grid").onclick = () => { deckFilter.view = "grid"; renderDeck(); };
+  $("#view-list").onclick = () => { deckFilter.view = "list"; renderDeck(); };
+  $("#levelFilterRow").querySelectorAll("[data-level]").forEach(b => b.onclick = () => { deckFilter.level = b.dataset.level; deckFilter.page = 1; renderDeck(); });
+  $("#posFilterRow").querySelectorAll("[data-pos]").forEach(b => b.onclick = () => { deckFilter.pos = b.dataset.pos; deckFilter.page = 1; renderDeck(); });
+  const prevBtn = $("#deckPrevPage"), nextBtn = $("#deckNextPage");
+  if(prevBtn) prevBtn.onclick = () => { if(deckFilter.page>1){ deckFilter.page--; renderDeck(); } };
+  if(nextBtn) nextBtn.onclick = () => { if(deckFilter.page<totalPages){ deckFilter.page++; renderDeck(); } };
 }
 $("#deck").addEventListener("click", async e => {
   const spk = e.target.closest("[data-speak]");
@@ -957,18 +1351,12 @@ $("#deck").addEventListener("click", async e => {
   }
   const del = e.target.closest("[data-del]");
   if(del){
+    if(!confirm("Bu kelimeyi silmek istediğine emin misin?")) return;
     const id = del.dataset.del;
     deck = deck.filter(c => c.id !== id);
     renderDeck(); renderStats();
     await store.remove(id);
     return;
-  }
-  const card = e.target.closest(".card");
-  if(card) card.classList.toggle("flipped");
-});
-$("#deck").addEventListener("keydown", e => {
-  if((e.key === "Enter" || e.key === " ") && e.target.classList.contains("card")){
-    e.preventDefault(); e.target.classList.toggle("flipped");
   }
 });
 
@@ -1109,67 +1497,142 @@ function readingCardHtml(){
   const r = readingState;
   const isZh = (LANG === "zh");
   const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
-  let bodyHtml;
-  if(isZh && r.pinyin){
-    const textLines = r.text.split(/\n+/).filter(l => l.trim());
-    const pinyinLines = r.pinyin.split(/\n+/).filter(l => l.trim());
-    const trLines = (r.tr || "").split(/\n+/).filter(l => l.trim());
-    bodyHtml = `
-      <div class="zh-reading-lines">${textLines.map((line, i) => `
-        <div class="zh-line">
-          <div class="zh-hanzi">${line}</div>
-          ${pinyinLines[i] ? `<div class="zh-pinyin">${pinyinLines[i]}</div>` : ""}
-          <div class="zh-tr" hidden>${trLines[i] || ""}</div>
-        </div>`).join("")}</div>
-      <button class="ghost" id="toggleTrBtn" style="margin-top:14px">Türkçesini göster</button>`;
-  }else{
-    bodyHtml = `
-      <div style="line-height:1.8;font-size:16px;white-space:pre-line">${r.text}</div>
-      <button class="ghost" id="toggleTrBtn" style="margin-top:14px">Türkçesini göster</button>
-      <div id="readingTr" hidden style="margin-top:10px;opacity:.75;line-height:1.7;white-space:pre-line">${r.tr}</div>`;
+  const wordList = `
+    <div class="bg-surface-container-lowest p-space-md md:p-space-lg rounded-xl shadow-sm flex flex-col gap-space-sm">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-tertiary">stylus</span><span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Metinde Geçen Anahtar Kelimeler</span></div>
+        <span class="font-label-sm text-label-sm text-on-surface-variant">${r.words.length} Kelime</span>
+      </div>
+      <div class="flex flex-col gap-2.5">
+        ${r.words.map((w,i) => {
+          const inDeck = existingWords.has((w.word||"").toLowerCase());
+          return `
+          <div class="p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center font-label-sm text-label-sm font-bold text-primary shrink-0">${i+1}</span>
+              <div class="flex flex-col min-w-0">
+                <div class="flex items-baseline gap-2"><span class="font-headline-sm text-headline-sm text-on-surface truncate">${w.word}</span>${w.pinyin?`<span class="font-label-sm text-label-sm text-on-surface-variant">${w.pinyin}</span>`:""}</div>
+                <span class="font-body-sm text-body-sm text-on-surface font-medium truncate">${w.tr}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-surface hover:text-primary transition-colors" data-speak-word="${w.word}" title="Telaffuz Dinle"><span class="material-symbols-outlined text-[16px]">volume_up</span></button>
+              <button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary hover:bg-primary hover:text-on-primary transition-colors reading-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck?'disabled':''} title="Desteme Kaydet"><span class="material-symbols-outlined text-[16px]">${inDeck?'check':'bookmark'}</span></button>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+
+  if(isZh && Array.isArray(r.tokens) && r.tokens.length){
+    const rubyHtml = r.tokens.map(t => t.py
+      ? `<ruby class="cursor-pointer hover:text-primary transition-colors inline-flex flex-col items-center" data-speak-word="${t.w}"><rt class="font-label-sm text-label-sm text-on-surface-variant select-none zh-rt">${t.py}</rt>${t.w}</ruby>`
+      : `<span class="text-on-surface-variant">${t.w}</span>`
+    ).join("");
+    return `
+      <div class="q" style="background:none;border:none;padding:0;box-shadow:none">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pb-space-sm">
+          <div class="flex flex-col gap-space-xs">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm uppercase tracking-widest">${r.level} Okuma Metni</span>
+              <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-secondary">bar_chart</span>${r.topic || "genel"}</span>
+            </div>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">${r.title}</h1>
+          </div>
+          <div class="flex items-center gap-3 bg-surface-container-high px-4 py-2.5 rounded-full shadow-sm shrink-0">
+            <button type="button" id="readAudioBtn" class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-on-primary hover:bg-primary-container transition-colors shadow-sm"><span class="material-symbols-outlined text-[20px]" id="readAudioIcon">play_arrow</span></button>
+            <div class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-full">
+              <button type="button" data-rate="0.75" class="rate-btn px-1.5 py-0.5 rounded text-[11px] font-semibold text-on-surface-variant">0.75x</button>
+              <span class="text-outline-variant text-[10px]">|</span>
+              <button type="button" data-rate="1" class="rate-btn px-1.5 py-0.5 rounded text-[11px] font-semibold bg-surface-container-highest text-on-surface">1.0x</button>
+            </div>
+          </div>
+        </div>
+        <div class="w-full rounded-xl bg-surface-container-low p-space-sm md:p-space-md shadow-md">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+            <div class="lg:col-span-7 flex flex-col gap-space-md bg-surface-container-lowest p-space-md md:p-space-lg rounded-xl shadow-sm">
+              <div class="flex items-center justify-between pb-space-sm">
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-primary"></span><span class="font-label-lg text-label-lg font-semibold text-on-surface">Çince Orijinal Metin (Geleneksel)</span></div>
+                <button type="button" id="togglePinyinBtn" class="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm hover:text-on-surface hover:bg-surface-container-high transition-colors">Pinyin Gizle/Göster</button>
+              </div>
+              <article class="font-body-lg text-body-lg text-on-surface leading-loose tracking-wide flex flex-wrap items-baseline gap-x-2.5 gap-y-6 pt-2" id="rubyContainer">${rubyHtml}</article>
+            </div>
+            <div class="lg:col-span-5 flex flex-col gap-space-md">
+              <div class="bg-surface-container-lowest p-space-md md:p-space-lg rounded-xl shadow-sm flex flex-col gap-space-sm">
+                <div class="flex items-center justify-between">
+                  <span class="font-label-lg text-label-lg font-semibold text-on-surface flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-secondary">translate</span>Editoryal Türkçe Çeviri</span>
+                  <button type="button" id="toggleTrBtn" class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">Göster</button>
+                </div>
+                <div id="readingTr" hidden class="font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-line">${r.tr}</div>
+              </div>
+              ${wordList}
+              <div id="chengyuBox" class="bg-primary-fixed/30 p-space-md rounded-xl shadow-sm flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-primary font-label-sm text-label-sm uppercase font-bold tracking-wider"><span class="material-symbols-outlined text-[16px]">auto_stories</span>Günün Deyimi (成语)</div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">${r.chengyu ? "" : "Hazırlanıyor…"}</p>
+                ${r.chengyu ? `<div class="flex items-baseline gap-2"><span class="font-headline-md text-headline-md text-on-surface font-semibold">${r.chengyu.hanzi}</span><span class="font-label-md text-label-md text-on-surface-variant italic">${r.chengyu.pinyin}</span></div><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed"><strong>Anlamı:</strong> ${r.chengyu.meaning}</p>` : ""}
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="ghost" id="newReadingBtn" style="margin-top:16px">Başka metin</button>
+      </div>`;
   }
+
   return `
     <div class="q">
       <div class="score">${r.level} · ${r.topic || "genel"}</div>
       <div style="font-family:var(--display);font-size:22px;font-weight:600;margin:8px 0 12px">${r.title} <button class="speak" id="readingSpeak" aria-label="Seslendir">🔊</button></div>
-      ${bodyHtml}
-      <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
-        <div style="font-size:11px;font-family:var(--mono);color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Metindeki Önemli Kelimeler</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          ${r.words.map(w => {
-            const inDeck = existingWords.has((w.word||"").toLowerCase());
-            return `
-            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--ink-3);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px">
-              <div>
-                <b style="color:var(--paper)">${w.word}</b> ${w.pinyin ? `<span style="font-family:var(--mono);font-size:11px;color:var(--paper-dim)">(${w.pinyin})</span>` : ""}
-                <span style="color:var(--paper-dim);margin-left:6px">— ${w.tr}</span>
-              </div>
-              <button class="ghost reading-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0;flex:none;margin-left:8px">
-                ${inDeck ? '✓ Destede' : '+ Desteye ekle'}
-              </button>
-            </div>`;
-          }).join("")}
-        </div>
-      </div>
+      <div style="line-height:1.8;font-size:16px;white-space:pre-line">${r.text}</div>
+      <button class="ghost" id="toggleTrBtn" style="margin-top:14px">Türkçesini göster</button>
+      <div id="readingTr" hidden style="margin-top:10px;opacity:.75;line-height:1.7;white-space:pre-line">${r.tr}</div>
+      <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">${wordList}</div>
       <button class="ghost" id="newReadingBtn" style="margin-top:16px">Başka metin</button>
     </div>`;
 }
+let readAudioPlaying = false;
 function bindReadingHandlers(){
+  const r = readingState;
+  const isZh = (LANG === "zh") && Array.isArray(r.tokens) && r.tokens.length;
   $("#toggleTrBtn").onclick = () => {
     const btn = $("#toggleTrBtn");
-    const zhLines = document.querySelectorAll(".zh-tr");
-    if(zhLines.length){
-      const show = zhLines[0].hidden;
-      zhLines.forEach(l => l.hidden = !show);
-      btn.textContent = show ? "Türkçesini gizle" : "Türkçesini göster";
-    }else{
-      const tr = $("#readingTr");
-      tr.hidden = !tr.hidden;
-      btn.textContent = tr.hidden ? "Türkçesini göster" : "Türkçesini gizle";
-    }
+    const tr = $("#readingTr");
+    tr.hidden = !tr.hidden;
+    btn.textContent = tr.hidden ? (isZh ? "Göster" : "Türkçesini göster") : (isZh ? "Gizle" : "Türkçesini gizle");
   };
   $("#newReadingBtn").onclick = fetchReading;
-  $("#readingSpeak").onclick = () => speak(readingState.text);
+  const speakBtn = $("#readingSpeak");
+  if(speakBtn) speakBtn.onclick = () => speak(r.text);
+  $("#reading").querySelectorAll("[data-speak-word]").forEach(b => b.onclick = (e) => { e.stopPropagation(); speak(b.dataset.speakWord); });
+  if(!isZh){ if(!r.chengyu) fetchChengyu(); return; }
+  const toggleBtn = $("#togglePinyinBtn");
+  if(toggleBtn) toggleBtn.onclick = () => {
+    document.querySelectorAll("#rubyContainer .zh-rt").forEach(rt => rt.style.visibility = rt.style.visibility === "hidden" ? "visible" : "hidden");
+  };
+  const audioBtn = $("#readAudioBtn");
+  if(audioBtn) audioBtn.onclick = () => {
+    const icon = $("#readAudioIcon");
+    if(readAudioPlaying){ speechSynthesis.cancel(); readAudioPlaying = false; icon.textContent = "play_arrow"; return; }
+    readAudioPlaying = true; icon.textContent = "pause";
+    if(!("speechSynthesis" in window)){ toast("Tarayıcın sesli okumayı desteklemiyor"); readAudioPlaying=false; icon.textContent="play_arrow"; return; }
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(r.text);
+    u.lang = SPEECH_LOCALE[LANG] || "zh-CN";
+    u.rate = +(document.querySelector(".rate-btn.bg-surface-container-highest")?.dataset.rate || 1);
+    u.onend = u.onerror = () => { readAudioPlaying = false; icon.textContent = "play_arrow"; };
+    speechSynthesis.speak(u);
+  };
+  document.querySelectorAll(".rate-btn").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".rate-btn").forEach(x => x.classList.remove("bg-surface-container-highest","text-on-surface"));
+    b.classList.add("bg-surface-container-highest","text-on-surface");
+  });
+  if(!r.chengyu) fetchChengyu();
+}
+async function fetchChengyu(){
+  const r = readingState;
+  try{
+    const c = await ask(`${r.topic ? `"${r.topic}" konusuyla ilgili ya da genel olarak sık kullanılan, ${r.level} seviyesindeki bir Çince öğrenciye uygun` : "sık kullanılan"} bir Çince deyim (成语/chéngyǔ) seç. Sadece geçerli JSON döndür: {"hanzi":"成语","pinyin":"pinyin okunuşu (ton işaretleriyle)","meaning":"Türkçe kısa anlamı ve kullanım notu (1-2 cümle)"}`);
+    if(readingState === r){ r.chengyu = c; renderReading(); }
+  }catch(e){ /* sessizce geç, deyim süsleme amaçlı */ }
 }
 async function fetchReading(){
   const level = $("#readingLevel").value;
@@ -1181,11 +1644,11 @@ async function fetchReading(){
   const lenPrompt = {A1:"60-90 kelime", A2:"90-130 kelime", B1:"130-180 kelime", B2:"180-250 kelime", C1:"250-320 kelime"}[level] || "130-180 kelime";
   try{
     const r = await ask(`${LANG_NAMES[LANG]} dilinde, ${level} seviyesine uygun, ${topic ? `"${topic}" konusuyla ilgili` : "güncel ve ilgi çekici bir konuda"}, ${lenPrompt} uzunluğunda bir okuma parçası yaz. Gerçek bir haber/dergi metni gibi doğal ve akıcı olsun, paragraflara ayır (paragraflar arasına \\n\\n koy).
-${isZh ? 'Çince metni BASİTLEŞTİRİLMİŞ değil GELENEKSEL (traditional) Çince karakterlerle yaz. "pinyin" alanına metnin TAMAMININ pinyin okunuşunu, "tr" alanına da Türkçe çevirisini, "text" ile TAM OLARAK AYNI SAYIDA paragrafa bölerek (aynı \\n\\n yapısıyla, paragraf paragraf hizalı) ver.' : ''}
+${isZh ? 'Çince metni BASİTLEŞTİRİLMİŞ değil GELENEKSEL (traditional) Çince karakterlerle yaz. Ayrıca "tokens" alanına metnin TAMAMINI, SIRAYLA, kelime/karakter gruplarına bölünmüş şekilde ver: her öğe {"w":"Çince parça","py":"pinyin okunuşu"} olsun; noktalama işaretleri ve boşluklar için "py" alanını null bırak. "tokens" dizisi art arda birleştirildiğinde metnin TAMAMINI (paragraf ayraçları \\n\\n dahil, "w" alanında) eksiksiz yeniden oluşturmalı.' : ''}
 Ayrıca metindeki ${level==="A1"||level==="A2"?"6-8":"8-12"} tane önemli/zor kelimeyi seç ve "words" dizisinde ver${isZh ? ' (her biri için pinyin dahil)' : ''}.
 Sadece geçerli JSON döndür:
-{"title":"metnin başlığı","text":"paragraflara ayrılmış okuma metni",${isZh ? '"pinyin":"metnin tamamının pinyin okunuşu",' : ''}"tr":"metnin tam Türkçe çevirisi, paragraflara ayrılmış","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}`);
-    readingState = Object.assign({ level, topic }, r);
+{"title":"metnin başlığı","text":"paragraflara ayrılmış okuma metni (düz metin, tokens ile aynı içerik)",${isZh ? '"tokens":[{"w":"parça","py":"pinyin veya null"}],' : ''}"tr":"metnin tam Türkçe çevirisi, paragraflara ayrılmış","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}`);
+    readingState = Object.assign({ level, topic, chengyu: null }, r);
     renderReading();
   }catch(err){ $("#readingContent").innerHTML = `<p class="err">Metin getirilemedi: ${err.message}</p>`; }
   btn.disabled = false; btn.textContent = "Metin getir";
@@ -1200,7 +1663,7 @@ $("#reading").addEventListener("click", async e => {
     deck.unshift(inserted);
     renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
-    b.textContent = "✓ Destede";
+    b.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span>';
     toast(`"${word}" desteye eklendi 🎉`);
   }catch(err){ b.disabled = false; alert("Eklenemedi: " + err.message); }
 });
@@ -1232,19 +1695,15 @@ $("#quiz").addEventListener("click", async e => {
     return;
   }
 
-  const o = e.target.closest(".opt");
-  if(!o || o.closest(".q").dataset.done) return;
-  const q = o.closest(".q");
-  q.dataset.done = "1";
-  q.querySelectorAll(".opt").forEach((b,i) => {
-    if(i == q.dataset.answer) b.classList.add("right");
-    else if(b === o) b.classList.add("wrong");
-  });
-  q.querySelectorAll(".opt-tr").forEach(s => s.hidden = false);
-  q.querySelector(".hint").hidden = false;
+  const opt = e.target.closest("[data-opt]");
+  if(opt && quizSession && !opt.disabled) answerQuiz(+opt.dataset.opt);
 });
 
 let quizHistory = [];
+let quizSession = null; // {questions, idx, points, streak, maxStreak, answers:[idx|null]}
+
+function quizMultiplier(streak){ return streak >= 5 ? 2 : streak >= 3 ? 1.5 : 1; }
+
 async function buildQuiz(){
   const el = $("#quiz");
   const words = deck.length >= 4 && deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck;
@@ -1265,47 +1724,184 @@ ${isZh ? 'Çince için "pinyin" alanına cümlenin pinyin okunuşunu (boşluk "_
 Sadece geçerli JSON dizisi döndür:
 [{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"optionTr":["","","",""],"answer":0,"tr":"cümlenin Türkçesi","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}]`);
     quizHistory = quizHistory.concat(qs.map(q=>q.sentence)).slice(-30);
+    quizSession = { questions: qs, idx: 0, points: 0, streak: 0, maxStreak: 0, answers: new Array(qs.length).fill(null) };
+    renderQuizQuestion();
+  }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
+}
 
-    const pinyinMap = {};
-    const trMap = {};
-    const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
-    deck.forEach(c => { if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; if(c.word) trMap[c.word.toLowerCase()] = c.tr; });
+function renderQuizQuestion(){
+  const el = $("#quiz");
+  const s = quizSession;
+  const i = s.idx;
+  const q = s.questions[i];
+  const isZh = (LANG === "zh");
+  const done = s.answers[i] !== null;
+  const pct = Math.round(((i + (done?1:0)) / s.questions.length) * 100);
+  const qPinyin = q.pinyin ? q.pinyin.replace("___","<b>_____</b>") : null;
+  const trMap = {}; const pinyinMap = {};
+  deck.forEach(c => { if(c.word) trMap[c.word.toLowerCase()] = c.tr; if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; });
+  const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
+  const letters = ["A","B","C","D"];
+  const tileTone = (idx) => {
+    if(!done) return "bg-surface-container-low hover:bg-surface-container text-on-surface";
+    if(idx === q.answer) return "bg-tertiary-fixed/60 text-on-tertiary-fixed";
+    if(idx === s.answers[i]) return "bg-error-container/70 text-on-error-container opacity-90";
+    return "bg-surface-container-low text-on-surface opacity-60";
+  };
 
-    el.innerHTML = qs.map(q => {
-      const qPinyin = q.pinyin ? q.pinyin.replace("___","<b>_____</b>") : null;
-      return `
-      <div class="q" data-answer="${q.answer}">
-        <div class="qtext">${q.sentence.replace("___","<b>_____</b>")}</div>
-        ${qPinyin ? `<div class="pinyin-sub" style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-top:-6px;margin-bottom:12px;letter-spacing:.02em">${qPinyin}</div>` : ""}
-        <div class="opts">${q.options.map((o, idx) => {
-          const py = (q.optionPinyins && q.optionPinyins[idx]) || pinyinMap[o];
-          const otr = (q.optionTr && q.optionTr[idx]) || trMap[(o||"").toLowerCase()] || "";
-          return `<button class="opt">${o}${isZh && py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${py}</span>` : ""}${otr ? `<span class="opt-tr" hidden>${otr}</span>` : ""}</button>`;
-        }).join("")}</div>
-        <div class="hint" hidden style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
-          <div style="font-size:14px;font-weight:600;color:var(--saffron);margin-bottom:10px">💡 ${q.tr}</div>
-          ${q.words && q.words.length ? `
-          <div style="font-size:11px;font-family:var(--mono);color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Kelimeler ve Anlamları</div>
-          <div style="display:flex;flex-direction:column;gap:6px">
+  el.innerHTML = `
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+      <div class="lg:col-span-8 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+          <div class="flex flex-wrap items-center justify-between gap-space-xs">
+            <div class="flex items-center gap-space-xs">
+              <span class="px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm uppercase tracking-wider">${LANG_NAMES[LANG]}</span>
+              <span class="font-label-md text-label-md text-on-surface-variant font-medium">Boşluk Doldurma Alıştırması</span>
+            </div>
+            <div class="flex items-center gap-space-sm font-label-md text-label-md">
+              <span class="text-on-surface font-semibold">Soru ${i+1} / ${s.questions.length}</span>
+              <span class="text-outline-variant">•</span>
+              <span class="text-primary font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">bolt</span>${s.points} Puan</span>
+            </div>
+          </div>
+          <div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+            <div class="bg-primary-container h-full rounded-full transition-all duration-500 ease-out" style="width:${pct}%"></div>
+          </div>
+        </div>
+
+        <div class="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-md flex flex-col gap-space-lg overflow-hidden">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-primary-container ${done?"":"animate-pulse"}"></span>
+              <span class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant font-semibold">Boşluğu Doldur</span>
+            </div>
+            <button type="button" id="quizSpeak" class="flex items-center gap-1 font-label-sm text-label-sm text-secondary hover:text-on-surface transition-colors px-2 py-1 rounded bg-surface-container-low"><span class="material-symbols-outlined text-[16px]">volume_up</span>Dinle</button>
+          </div>
+          <div class="bg-surface-container-low/70 rounded-xl p-space-lg flex flex-col items-center justify-center text-center gap-space-sm">
+            <div class="font-display text-headline-lg text-on-surface tracking-wide">${q.sentence.replace("___",`<span class="inline-flex items-center justify-center px-4 py-1 rounded-lg bg-surface-container-lowest text-primary font-semibold shadow-sm min-w-[80px]">?</span>`)}</div>
+            ${qPinyin ? `<div class="font-body-md text-body-md text-on-surface-variant italic tracking-normal">${qPinyin}</div>` : ""}
+            ${done ? `<div class="font-body-sm text-body-sm text-on-surface/80 max-w-xl pt-2">"${q.tr}"</div>` : ""}
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm pt-space-xs">
+            ${q.options.map((o,idx) => {
+              const py = (q.optionPinyins && q.optionPinyins[idx]) || pinyinMap[o];
+              const otr = (q.optionTr && q.optionTr[idx]) || trMap[(o||"").toLowerCase()] || "";
+              return `
+              <button type="button" data-opt="${idx}" ${done?"disabled":""} class="group relative text-left p-space-md rounded-xl shadow-sm transition-all flex items-center justify-between ${tileTone(idx)}">
+                <div class="flex items-center gap-space-sm min-w-0">
+                  <span class="w-8 h-8 rounded-full flex items-center justify-center font-label-md text-label-md font-bold shadow-sm shrink-0 ${done && idx===q.answer ? "bg-tertiary text-on-tertiary" : done && idx===s.answers[i] ? "bg-error text-on-error" : "bg-surface-container-high text-on-surface-variant"}">${letters[idx]}</span>
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-headline-sm text-headline-sm font-semibold truncate leading-snug">${o}${isZh && py ? `<span class="block font-label-sm text-label-sm font-normal opacity-80">${py}</span>` : ""}</span>
+                    ${done && otr ? `<span class="font-body-sm text-body-sm truncate opacity-90">${otr}</span>` : ""}
+                  </div>
+                </div>
+                ${done && idx===q.answer ? `<span class="w-6 h-6 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center shadow-sm shrink-0"><span class="material-symbols-outlined text-[16px] font-bold">check</span></span>` : ""}
+                ${done && idx===s.answers[i] && idx!==q.answer ? `<span class="w-6 h-6 rounded-full bg-error text-on-error flex items-center justify-center shadow-sm shrink-0"><span class="material-symbols-outlined text-[16px] font-bold">close</span></span>` : ""}
+              </button>`;
+            }).join("")}
+          </div>
+        </div>
+
+        ${done ? `
+        <div class="bg-surface-container-low rounded-xl p-space-lg shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+          <div class="flex items-start gap-space-md max-w-2xl">
+            <div class="w-10 h-10 rounded-full ${s.answers[i]===q.answer?"bg-tertiary-fixed text-on-tertiary-fixed":"bg-error-container text-on-error-container"} flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+              <span class="material-symbols-outlined text-[24px]">${s.answers[i]===q.answer?"lightbulb":"menu_book"}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span class="font-headline-sm text-headline-sm font-semibold ${s.answers[i]===q.answer?"text-tertiary":"text-error"}">${s.answers[i]===q.answer?"Harika! Doğru Cevap":"Bu sefer olmadı"}</span>
+                ${s.answers[i]===q.answer ? `<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed-dim/40 text-on-tertiary-container font-label-sm text-label-sm">+${Math.round(20*quizMultiplier(s.streak))} Puan</span>` : ""}
+              </div>
+              <p class="font-body-md text-body-md text-on-surface">${q.tr}</p>
+              ${q.words && q.words.length ? `<div class="flex flex-wrap items-center gap-2 mt-1">
+                ${q.words.map(w => `<span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm font-medium">${w.word}${w.pinyin?` (${w.pinyin})`:""} — ${w.tr}</span>`).join("")}
+              </div>` : ""}
+            </div>
+          </div>
+          <button type="button" id="quizNextBtn" class="w-full md:w-auto px-6 py-3 rounded-full bg-primary-container text-on-primary-container hover:shadow-[0_6px_16px_rgba(212,136,59,0.28)] transition-all font-label-lg text-label-lg font-semibold flex items-center justify-center gap-2 shrink-0">
+            <span>${i < s.questions.length-1 ? "Sonraki Soru" : "Sonuçları Gör"}</span><span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </button>
+        </div>` : ""}
+      </div>
+
+      <div class="lg:col-span-4 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md">
+          <div class="flex items-center justify-between"><span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Soru Akışı</span></div>
+          <div class="grid grid-cols-5 gap-2">
+            ${s.questions.map((_,idx) => {
+              const r = s.answers[idx];
+              let cls = "bg-surface-container-high text-on-surface-variant font-medium";
+              let label = String(idx+1);
+              if(r !== null) { cls = r === s.questions[idx].answer ? "bg-tertiary-fixed text-on-tertiary-fixed font-bold" : "bg-error-container text-on-error-container font-bold"; label = (r === s.questions[idx].answer ? "✓ " : "× ") + (idx+1); }
+              else if(idx === i) cls = "bg-primary-container text-on-primary-container font-bold";
+              return `<div class="h-9 rounded-lg flex items-center justify-center font-label-md text-label-md shadow-sm ${cls}">${label}</div>`;
+            }).join("")}
+          </div>
+          <div class="flex items-center justify-between pt-space-xs text-on-surface-variant font-label-sm text-label-sm">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>${s.answers.filter((r,idx)=>r!==null && r===s.questions[idx].answer).length} Doğru</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-error"></span>${s.answers.filter((r,idx)=>r!==null && r!==s.questions[idx].answer).length} Yanlış</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-surface-container-highest"></span>${s.answers.filter(r=>r===null).length} Kalan</span>
+          </div>
+        </div>
+        ${q.words && q.words.length ? `
+        <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+          <span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Bu Sorunun Kelimeleri</span>
+          <div class="flex flex-col gap-2">
             ${q.words.map(w => {
               const inDeck = existingWords.has((w.word||"").toLowerCase());
-              return `
-              <div style="display:flex;justify-content:space-between;align-items:center;background:var(--ink-3);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px">
-                <div>
-                  <b style="color:var(--paper)">${w.word}</b> ${w.pinyin ? `<span style="font-family:var(--mono);font-size:11px;color:var(--paper-dim)">(${w.pinyin})</span>` : ""} 
-                  <span style="color:var(--paper-dim);margin-left:6px">— ${w.tr}</span>
-                </div>
-                <button class="ghost quiz-add-btn" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0;flex:none;margin-left:8px">
-                  ${inDeck ? '✓ Destede' : '+ Tekrarlara ekle'}
-                </button>
+              return `<div class="p-2.5 rounded-lg bg-surface-container-low flex items-center justify-between gap-2">
+                <div class="flex flex-col min-w-0"><span class="font-headline-sm text-headline-sm leading-tight truncate">${w.word}${w.pinyin?` (${w.pinyin})`:""}</span><span class="font-body-sm text-body-sm text-on-surface-variant truncate">${w.pos||""} • ${w.tr}</span></div>
+                <button class="ghost quiz-add-btn shrink-0" data-word="${w.word}" data-tr="${w.tr}" data-pos="${w.pos||'isim'}" data-artikel="${w.pinyin||''}" ${inDeck ? 'disabled' : ''} style="padding:4px 10px;font-size:12px;min-height:0">${inDeck ? '✓ Destede' : '+ Ekle'}</button>
               </div>`;
             }).join("")}
-          </div>` : ""}
+          </div>
+        </div>` : ""}
+        <div class="bg-surface-container-high/80 rounded-xl p-space-md shadow-sm flex items-center justify-between">
+          <div class="flex items-center gap-space-sm">
+            <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold"><span class="material-symbols-outlined text-[20px]">local_fire_department</span></div>
+            <div class="flex flex-col"><span class="font-label-lg text-label-lg text-on-surface font-semibold">${s.streak} Seri Doğru</span><span class="font-body-sm text-body-sm text-on-surface-variant">${s.streak>=3?"Harika odaklanma!":"Devam et"}</span></div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full bg-surface-container-lowest font-label-sm text-label-sm font-semibold text-primary shadow-sm">x${quizMultiplier(s.streak)} Çarpan</span>
         </div>
-      </div>`;
-    }).join("") + `<button class="ghost" id="requiz">Yeni set üret</button>`;
-    $("#requiz").onclick = buildQuiz;
-  }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
+      </div>
+    </div>`;
+
+  const speakBtn = $("#quizSpeak");
+  if(speakBtn) speakBtn.onclick = () => speak(q.sentence.replace("___"," "));
+  const nextBtn = $("#quizNextBtn");
+  if(nextBtn) nextBtn.onclick = () => {
+    if(s.idx < s.questions.length - 1){ s.idx++; renderQuizQuestion(); }
+    else finishQuizSession();
+  };
+}
+function answerQuiz(idx){
+  const s = quizSession;
+  const q = s.questions[s.idx];
+  s.answers[s.idx] = idx;
+  if(idx === q.answer){
+    s.streak++; s.maxStreak = Math.max(s.maxStreak, s.streak);
+    s.points += Math.round(20 * quizMultiplier(s.streak));
+  }else{
+    s.streak = 0;
+  }
+  renderQuizQuestion();
+}
+function finishQuizSession(){
+  const s = quizSession;
+  const correct = s.answers.filter((r,idx) => r === s.questions[idx].answer).length;
+  const s2 = loadDailyStats();
+  s2.points += s.points; s2.totalPoints = (s2.totalPoints||0) + s.points;
+  saveDailyStats(s2); renderFooterStats();
+  $("#quiz").innerHTML = `
+    <div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md flex flex-col items-center text-center gap-space-sm max-w-xl mx-auto">
+      <span class="material-symbols-outlined text-[48px] text-primary">emoji_events</span>
+      <h2 class="font-headline-lg text-headline-lg text-on-surface">${correct} / ${s.questions.length} doğru</h2>
+      <p class="font-body-md text-body-md text-on-surface-variant">Bu turda <strong class="text-primary">${s.points} puan</strong> kazandın${s.maxStreak>=3?`, en uzun serin <strong class="text-tertiary">${s.maxStreak}</strong> doğruydu`:""}.</p>
+      <button type="button" id="requiz" class="mt-2 px-6 py-3 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg font-semibold">Yeni set üret</button>
+    </div>`;
+  quizSession = null;
+  $("#requiz").onclick = buildQuiz;
 }
 
 /* ---------- eşleştirme ---------- */
@@ -1949,7 +2545,8 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
 
 /* ---------- tema ---------- */
 function syncThemeToggle(){
-  $("#themeToggle").textContent = theme === "dark" ? "☀" : "🌙";
+  const icon = $("#themeIcon");
+  if(icon) icon.textContent = theme === "dark" ? "light_mode" : "dark_mode";
 }
 function toggleTheme(){
   theme = theme === "dark" ? "light" : "dark";
@@ -2010,7 +2607,6 @@ function playTitleTypewriter(){
   }, 70);
 }
 renderTitleStatic();
-setInterval(playTitleTypewriter, 45000);
 
 /* ---------- tanıtım turu ---------- */
 const TUTORIAL_KEY = "kelime-defteri:tutorial-seen";
