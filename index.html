@@ -3,21 +3,23 @@
 <title>Kelime Defteri</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+  /* Warm Editorial Vocabulary Journal — Stitch tasarım sisteminden alınan,
+     göz yormayan (saf siyah/beyaz içermeyen) sıcak parşömen/mürekkep paleti. */
   :root{
-    --ink:#1B1220; --ink-2:#271A2D; --ink-3:#33233B; --line:#4A3552;
-    --paper:#F4EDE3; --paper-dim:#C6B7C4; --muted:#7C6884;
-    --saffron:#E8B33C; --mint:#79D2A6; --rose:#E4728C; --sky:#7FB6E8; --violet:#B49AE8;
-    --back-a:#2E2036; --back-b:#241830; --glow:#3A2440;
-    --display:'Fraunces',Georgia,serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',monospace;
+    --ink:#18121E; --ink-2:#2A2135; --ink-3:#201828; --line:#3A2F44;
+    --paper:#EADFCF; --paper-dim:#B8A9BC; --muted:#8D7F94;
+    --saffron:#D4883B; --mint:#6B9B7E; --rose:#C26D6D; --sky:#7CA6B8; --violet:#A896B8;
+    --back-a:#241830; --back-b:#18121E; --glow:#2D2138;
+    --display:'Playfair Display',Georgia,serif; --body:'Plus Jakarta Sans',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
   }
   :root[data-theme="light"]{
-    --ink:#F2EAE0; --ink-2:#FFFFFF; --ink-3:#FBF3E8; --line:#E1D3CC;
-    --paper:#241830; --paper-dim:#8A7690; --muted:#A392A0;
-    --saffron:#B8791A; --mint:#1E8A5F; --rose:#C23A5E; --sky:#2E6FB0; --violet:#6B4FB8;
-    --back-a:#FFFFFF; --back-b:#F3EAF6; --glow:#FBE9C7;
+    --ink:#F5EFEB; --ink-2:#FCFAF6; --ink-3:#EDE4DA; --line:#DED2C2;
+    --paper:#261C2C; --paper-dim:#4A3F50; --muted:#857466;
+    --saffron:#8D4F00; --mint:#39684E; --rose:#A8453F; --sky:#436373; --violet:#6F5D82;
+    --back-a:#FCFAF6; --back-b:#F5EFEB; --glow:#F0E4D0;
   }
   [hidden]{display:none !important}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -201,7 +203,7 @@
 
   .gate{max-width:380px;margin:6vh auto 0;text-align:center;display:flex;flex-direction:column;gap:14px}
   .gate .lead{color:var(--paper-dim);line-height:1.6;margin:0 0 8px}
-  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#F4EDE3;color:#231708;font-size:15px;padding:13px 22px;width:100%}
+  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#FCFAF6;color:#261C2C;font-size:15px;padding:13px 22px;width:100%}
   .gbtn svg{width:18px;height:18px;flex:none}
   .or{display:flex;align-items:center;gap:12px;color:var(--paper-dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
   .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
