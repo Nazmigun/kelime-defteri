@@ -1172,22 +1172,71 @@ document.addEventListener("keydown", e => {
 
 /* ---------- deste ---------- */
 const POS_LIST = ["isim","fiil","sıfat","zarf","edat","bağlaç","ünlem","kalıp"];
-let deckFilter = { due:"all", level:"all", pos:"all", sort:"due" };
-let deckFilterOpen = false;
+const DECK_PAGE_SIZE = 12;
+let deckFilter = { level:"all", pos:"all", sort:"due", q:"", view:"grid", page:1 };
 
+function cardSuccessPct(c){
+  const total = (c.reps||0) + (c.lapses||0);
+  if(!total) return null;
+  return Math.max(0, Math.min(100, Math.round((1 - (c.lapses||0)/total) * 100)));
+}
 function filterDeck(){
-  const now = Date.now();
+  const q = deckFilter.q.trim().toLowerCase();
   let list = deck.filter(w => {
-    if(deckFilter.due === "today" && !(w.due <= now)) return false;
-    if(deckFilter.due === "week" && !(w.due > now && w.due <= now + 7*DAY)) return false;
-    if(deckFilter.due === "postponed" && !(w.due > now + 7*DAY)) return false;
     if(deckFilter.level !== "all" && w.level !== deckFilter.level) return false;
     if(deckFilter.pos !== "all" && w.pos !== deckFilter.pos) return false;
+    if(q && !(w.word.toLowerCase().includes(q) || (w.artikel||"").toLowerCase().includes(q) || (w.tr||"").toLowerCase().includes(q))) return false;
     return true;
   });
   if(deckFilter.sort === "lapses") list.sort((a,b) => (b.lapses||0) - (a.lapses||0) || a.due - b.due);
+  else if(deckFilter.sort === "alpha") list.sort((a,b) => (a.artikel||a.word).localeCompare(b.artikel||b.word));
+  else if(deckFilter.sort === "accuracy") list.sort((a,b) => (cardSuccessPct(a)??101) - (cardSuccessPct(b)??101));
   else list.sort((a,b) => a.due - b.due);
   return list;
+}
+
+function deckLevelsPresent(){
+  return [...new Set(deck.map(c => c.level).filter(Boolean))].sort();
+}
+function deckPosCounts(){
+  const m = {};
+  deck.forEach(c => { m[c.pos] = (m[c.pos]||0) + 1; });
+  return m;
+}
+
+function deckCardHtml(w, idx){
+  const pct = cardSuccessPct(w);
+  const stripColors = ["#8C7B9B","#69A297","#D97D78","#84A98C","#4A7C59","#6B8E9F","#D4883B","#5A879E"];
+  const strip = stripColors[idx % stripColors.length];
+  const statusHtml = w.lapses >= LEECH_THRESHOLD
+    ? `<span class="flex items-center gap-1 text-error font-medium"><span class="material-symbols-outlined text-[14px]">replay</span>Tekrar Gerekiyor</span><span class="text-error font-semibold">Zorlandı</span>`
+    : `<span class="flex items-center gap-1 text-tertiary font-medium"><span class="material-symbols-outlined text-[14px]">check_circle</span>${pct===null?"Henüz test edilmedi":`Başarı: %${pct}`}</span><span class="text-on-surface-variant/60">${dueLabel(w)} sonra</span>`;
+  return `
+  <article class="group relative bg-surface-container-lowest rounded-xl shadow-[0_4px_16px_-2px_rgba(38,28,44,0.08),0_1px_3px_0_rgba(38,28,44,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(38,28,44,0.14)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden flex flex-col justify-between" data-id="${w.id}">
+    <div class="absolute left-0 top-0 bottom-0 w-1.5" style="background:${strip}"></div>
+    <div class="p-space-lg pl-7 flex flex-col">
+      <div class="flex items-center justify-between mb-space-md">
+        <span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm font-semibold tracking-wide" style="background:${strip}26;color:${strip}">${w.pos}${w.level?` • ${w.level}`:""}</span>
+        <div class="flex items-center gap-1">
+          <button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low transition-colors" data-speak="${w.id}" title="Sesli Oku"><span class="material-symbols-outlined text-[18px]">volume_up</span></button>
+          <button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant/40 hover:text-error transition-colors" data-del="${w.id}" title="Sil"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+        </div>
+      </div>
+      <div class="mb-space-sm">
+        <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-wide group-hover:text-primary transition-colors">${w.word}</h2>
+        <div class="flex items-center gap-2 mt-0.5">
+          ${w.artikel ? `<span class="font-label-md text-label-md tracking-wider font-medium" style="color:${strip}">${w.artikel}</span><span class="text-outline-variant/40">•</span>` : ""}
+          <span class="font-label-sm text-label-sm text-on-surface-variant/70">${w.tr}</span>
+        </div>
+      </div>
+      ${w.example ? `<div class="mt-space-sm p-space-sm bg-surface-container-low/50 rounded-lg">
+        <p class="font-body-sm text-body-sm text-on-surface/90 italic leading-relaxed">${exampleHtml(w)}</p>
+      </div>` : ""}
+    </div>
+    <div class="px-space-lg pl-7 py-space-xs bg-surface-container-low/40 flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+      ${statusHtml}
+    </div>
+  </article>`;
 }
 
 function renderDeck(){
@@ -1196,71 +1245,102 @@ function renderDeck(){
     el.innerHTML = `<div class="empty"><b>Defter boş</b>İlk kelimeni ekleyince kartlar burada birikir.</div>`;
     return;
   }
-  const list = filterDeck();
-  const opt = (val, label, cur) => `<option value="${val}" ${val===cur?"selected":""}>${label}</option>`;
-  const activeCount = ["due","level","pos"].filter(k => deckFilter[k] !== "all").length;
-  el.innerHTML = `
-    <div class="toolbar deck-toolbar">
-      <div class="save-state">${list.length}${list.length !== deck.length ? ` / ${deck.length}` : ""} kelime</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="sortSelect">
-          ${opt("due","Sıradaki tekrara göre",deckFilter.sort)}
-          ${opt("lapses","En çok zorlandıklarım",deckFilter.sort)}
-        </select>
-        <button class="ghost" id="filterToggle">Filtrele${activeCount ? `<span class="badge">${activeCount}</span>` : ""}</button>
-      </div>
-    </div>
-    ${deckFilterOpen ? `
-    <div class="deck-filters">
-      <select id="dueFilter">
-        ${opt("all","Tüm zamanlar",deckFilter.due)}
-        ${opt("today","Bugün",deckFilter.due)}
-        ${opt("week","Bu hafta",deckFilter.due)}
-        ${opt("postponed","Ertelenmiş (7+ gün)",deckFilter.due)}
-      </select>
-      <select id="levelFilter">
-        ${opt("all","Tüm seviyeler",deckFilter.level)}
-        ${["A1","A2","B1","B2","C1"].map(l=>opt(l,l,deckFilter.level)).join("")}
-      </select>
-      <select id="posFilter">
-        ${opt("all","Tüm türler",deckFilter.pos)}
-        ${POS_LIST.map(p=>opt(p,p,deckFilter.pos)).join("")}
-      </select>
-      ${activeCount ? `<button class="ghost" id="clearFilters">Temizle</button>` : ""}
-    </div>` : ""}
-    ${list.length ? `<div class="deck">` + list.map(w => `
-    <div class="card" tabindex="0" role="button" aria-label="${w.word} kartını çevir">
-      <div class="inner">
-        <div class="face" style="--pos:${posColor(w.pos)}">
-          <button class="del" data-del="${w.id}" aria-label="Sil">×</button>
-          ${w.lapses ? `<div class="lapses">⚠ ${w.lapses}</div>` : ""}
-          <div class="term">${wordLabel(w)} <button class="speak" data-speak="${w.id}" aria-label="Seslendir">🔊</button></div>
-          <div>
-            <div class="meta">${w.pos} · ${w.level||""}</div>
-            <div class="due ${w.due <= Date.now() ? "now":""}">tekrar: ${dueLabel(w)}</div>
-          </div>
-          <div class="bar"><i style="width:${maturity(w)*100}%"></i></div>
-        </div>
-        <div class="face back" style="--pos:${posColor(w.pos)}">
-          <div class="tr">${w.tr}</div>
-          <div class="ex">${exampleHtml(w)}</div>
-        </div>
-      </div>
-    </div>`).join("") + `</div>`
-    : `<div class="empty"><b>Sonuç yok</b>Bu filtreye uyan kelime yok.</div>`}`;
+  const allFiltered = filterDeck();
+  const totalPages = Math.max(1, Math.ceil(allFiltered.length / DECK_PAGE_SIZE));
+  deckFilter.page = Math.min(deckFilter.page, totalPages);
+  const list = allFiltered.slice((deckFilter.page-1)*DECK_PAGE_SIZE, deckFilter.page*DECK_PAGE_SIZE);
+  const levels = deckLevelsPresent();
+  const posCounts = deckPosCounts();
+  const recallPct = recallRate();
 
-  $("#sortSelect").onchange = e => { deckFilter.sort = e.target.value; renderDeck(); };
-  $("#filterToggle").onclick = () => { deckFilterOpen = !deckFilterOpen; renderDeck(); };
-  if(deckFilterOpen){
-    $("#dueFilter").onchange = e => { deckFilter.due = e.target.value; renderDeck(); };
-    $("#levelFilter").onchange = e => { deckFilter.level = e.target.value; renderDeck(); };
-    $("#posFilter").onchange = e => { deckFilter.pos = e.target.value; renderDeck(); };
-    const clearBtn = $("#clearFilters");
-    if(clearBtn) clearBtn.onclick = () => {
-      deckFilter.due = "all"; deckFilter.level = "all"; deckFilter.pos = "all";
-      renderDeck();
-    };
-  }
+  const levelBtn = (val,label) => `<button type="button" data-level="${val}" class="px-2.5 py-1 rounded font-label-sm text-label-sm transition-colors ${deckFilter.level===val?"bg-surface-container-lowest text-primary font-semibold shadow-xs":"text-on-surface-variant hover:text-on-surface"}">${label}</button>`;
+  const posBtn = (val,label,count) => `<button type="button" data-pos="${val}" class="px-3.5 py-1.5 rounded-full font-label-sm text-label-sm transition-all flex items-center gap-1.5 ${deckFilter.pos===val?"bg-primary text-on-primary font-medium shadow-sm":"bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"}"><span>${label}</span><span class="${deckFilter.pos===val?"bg-on-primary/20":"bg-surface-container-highest"} px-1.5 py-0.2 rounded-full text-[10px]">${count}</span></button>`;
+
+  el.innerHTML = `
+    <div class="relative w-full">
+      <section class="flex flex-col gap-space-lg mb-space-xl">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+          <div>
+            <div class="flex items-center gap-space-xs font-label-md text-label-md uppercase tracking-widest text-primary mb-1">
+              <span class="inline-block w-2 h-2 rounded-full bg-primary"></span>
+              <span>${LANG_NAMES[LANG]} Sözlük Koleksiyonu</span>
+            </div>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Kelime Defteri Kataloğu</h1>
+            <p class="font-body-md text-body-md text-on-surface-variant max-w-xl mt-1">Toplam ${deck.length} editoryal kelime kartı. Telaffuz ve bağlam cümleleriyle bezeli kişisel kütüphanen.</p>
+          </div>
+          <div class="flex items-center gap-space-md bg-surface-container-low px-space-md py-space-sm rounded-xl shadow-sm self-start md:self-auto">
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">auto_stories</span></div>
+            <div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant">Deste</span><span class="font-headline-sm text-headline-sm text-on-surface leading-tight">${deck.length} kelime</span></div>
+            <div class="h-8 w-px bg-outline-variant/30 mx-1"></div>
+            <div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant">Ezber Gücü</span><span class="font-headline-sm text-headline-sm text-tertiary leading-tight">${recallPct===null?"—":"%"+recallPct}</span></div>
+          </div>
+        </div>
+        <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-[0_4px_20px_-4px_rgba(38,28,44,0.08)] flex flex-col gap-space-md">
+          <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+            <div class="relative flex-1">
+              <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/70 text-[20px]">search</span>
+              <input id="deckSearch" value="${deckFilter.q.replace(/"/g,'&quot;')}" class="w-full pl-11 pr-4 py-2.5 rounded-lg bg-surface-container-low/60 text-on-surface font-body-md text-body-md placeholder:text-on-surface-variant/50 focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Kelime, pinyin veya Türkçe anlam ara…" type="text">
+            </div>
+            <div class="flex flex-wrap items-center gap-space-sm justify-between lg:justify-end">
+              <div class="flex items-center bg-surface-container-low p-1 rounded-lg" id="levelFilterRow">
+                <span class="px-2 font-label-sm text-label-sm text-on-surface-variant">Seviye:</span>
+                ${levelBtn("all","Tümü")}
+                ${levels.map(l => levelBtn(l,l)).join("")}
+              </div>
+              <div class="relative flex items-center bg-surface-container-low px-3 py-1.5 rounded-lg text-on-surface-variant">
+                <span class="material-symbols-outlined text-[18px] mr-1.5 text-primary">sort</span>
+                <select id="deckSort" class="bg-transparent font-label-sm text-label-sm text-on-surface focus:outline-none cursor-pointer appearance-none">
+                  <option value="due" ${deckFilter.sort==="due"?"selected":""}>Sıradaki tekrara göre</option>
+                  <option value="lapses" ${deckFilter.sort==="lapses"?"selected":""}>En çok zorlanılan</option>
+                  <option value="alpha" ${deckFilter.sort==="alpha"?"selected":""}>Alfabetik</option>
+                  <option value="accuracy" ${deckFilter.sort==="accuracy"?"selected":""}>Başarı oranına göre</option>
+                </select>
+              </div>
+              <div class="flex items-center bg-surface-container-low p-1 rounded-lg">
+                <button type="button" id="view-grid" class="p-1.5 rounded ${deckFilter.view==="grid"?"bg-surface-container-lowest text-primary shadow-xs":"text-on-surface-variant"}" title="Geniş Grid"><span class="material-symbols-outlined text-[18px]">grid_view</span></button>
+                <button type="button" id="view-list" class="p-1.5 rounded ${deckFilter.view==="list"?"bg-surface-container-lowest text-primary shadow-xs":"text-on-surface-variant"}" title="Kompakt Liste"><span class="material-symbols-outlined text-[18px]">view_agenda</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between overflow-x-auto pt-1 gap-space-sm" id="posFilterRow" style="scrollbar-width:none">
+            <div class="flex items-center gap-space-xs">
+              ${posBtn("all","Tümü",deck.length)}
+              ${POS_LIST.filter(p => posCounts[p]).map(p => posBtn(p, p.charAt(0).toUpperCase()+p.slice(1), posCounts[p])).join("")}
+            </div>
+            <div class="hidden sm:flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant/80 whitespace-nowrap pl-4">
+              <span class="material-symbols-outlined text-[15px] text-tertiary">filter_list</span>
+              <span>${allFiltered.length} kart gösteriliyor</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      ${list.length ? `<section class="grid grid-cols-1 ${deckFilter.view==="grid"?"md:grid-cols-2 lg:grid-cols-4":""} gap-space-lg mb-space-xl" id="deckGrid">
+        ${list.map((w,i) => deckCardHtml(w,i)).join("")}
+      </section>` : `<div class="empty"><b>Sonuç yok</b>Bu filtreye uyan kelime yok.</div>`}
+      ${totalPages > 1 ? `
+      <footer class="pt-space-sm pb-space-lg flex flex-col sm:flex-row items-center justify-between gap-space-md">
+        <div class="flex items-center gap-space-md text-on-surface-variant font-label-md text-label-md">
+          <div class="flex items-center gap-1 bg-surface-container-lowest px-3 py-1.5 rounded-full shadow-xs">
+            <span class="material-symbols-outlined text-[16px] text-primary">menu_book</span>
+            <span class="font-headline-sm text-[16px] text-on-surface leading-none">Sayfa ${deckFilter.page}</span><span class="text-outline-variant">/</span><span>${totalPages}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-xs">
+          <button type="button" id="deckPrevPage" class="px-3 py-1.5 rounded-lg font-label-sm text-label-sm flex items-center gap-1 ${deckFilter.page<=1?"text-on-surface-variant/40 bg-surface-container-low cursor-not-allowed":"text-on-surface bg-surface-container-lowest hover:bg-surface-container-high"}" ${deckFilter.page<=1?"disabled":""}><span class="material-symbols-outlined text-[16px]">arrow_back</span>Önceki</button>
+          <button type="button" id="deckNextPage" class="px-4 py-1.5 rounded-lg font-label-sm text-label-sm text-on-surface bg-surface-container-lowest hover:bg-primary-container hover:text-on-primary-container transition-all flex items-center gap-1.5 font-medium ${deckFilter.page>=totalPages?"opacity-40 cursor-not-allowed":""}" ${deckFilter.page>=totalPages?"disabled":""}>Sonraki<span class="material-symbols-outlined text-[16px]">arrow_forward</span></button>
+        </div>
+      </footer>` : ""}
+    </div>`;
+
+  $("#deckSearch").oninput = e => { deckFilter.q = e.target.value; deckFilter.page = 1; renderDeck(); };
+  $("#deckSort").onchange = e => { deckFilter.sort = e.target.value; renderDeck(); };
+  $("#view-grid").onclick = () => { deckFilter.view = "grid"; renderDeck(); };
+  $("#view-list").onclick = () => { deckFilter.view = "list"; renderDeck(); };
+  $("#levelFilterRow").querySelectorAll("[data-level]").forEach(b => b.onclick = () => { deckFilter.level = b.dataset.level; deckFilter.page = 1; renderDeck(); });
+  $("#posFilterRow").querySelectorAll("[data-pos]").forEach(b => b.onclick = () => { deckFilter.pos = b.dataset.pos; deckFilter.page = 1; renderDeck(); });
+  const prevBtn = $("#deckPrevPage"), nextBtn = $("#deckNextPage");
+  if(prevBtn) prevBtn.onclick = () => { if(deckFilter.page>1){ deckFilter.page--; renderDeck(); } };
+  if(nextBtn) nextBtn.onclick = () => { if(deckFilter.page<totalPages){ deckFilter.page++; renderDeck(); } };
 }
 $("#deck").addEventListener("click", async e => {
   const spk = e.target.closest("[data-speak]");
@@ -1271,18 +1351,12 @@ $("#deck").addEventListener("click", async e => {
   }
   const del = e.target.closest("[data-del]");
   if(del){
+    if(!confirm("Bu kelimeyi silmek istediğine emin misin?")) return;
     const id = del.dataset.del;
     deck = deck.filter(c => c.id !== id);
     renderDeck(); renderStats();
     await store.remove(id);
     return;
-  }
-  const card = e.target.closest(".card");
-  if(card) card.classList.toggle("flipped");
-});
-$("#deck").addEventListener("keydown", e => {
-  if((e.key === "Enter" || e.key === " ") && e.target.classList.contains("card")){
-    e.preventDefault(); e.target.classList.toggle("flipped");
   }
 });
 
