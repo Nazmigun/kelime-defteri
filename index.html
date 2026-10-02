@@ -160,11 +160,16 @@ tailwind.config = {
   .topbar.stuck .gen{display:none}
   .topbar.stuck.gen-open .gen{display:flex}
 
-  nav{display:flex;gap:2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-  nav button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;color:var(--paper-dim);font-weight:500;padding:10px 16px;min-height:44px}
-  nav button[aria-selected="true"]{color:var(--paper);border-bottom-color:var(--saffron)}
-  nav button:hover{filter:none;color:var(--paper)}
-  .badge{font-family:var(--mono);font-size:10px;background:var(--saffron);color:#231708;border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:600}
+  nav[role="tablist"]{flex-wrap:nowrap !important;scrollbar-width:none}
+  nav[role="tablist"]::-webkit-scrollbar{display:none}
+  .nav-tab{position:relative;padding:0 0 8px;margin:0;min-height:0;background:none;border:none;
+    font-family:var(--body);font-size:14px;font-weight:500;letter-spacing:.01em;color:var(--on-surface-variant);
+    white-space:nowrap;cursor:pointer;transition:color .15s ease}
+  .nav-tab:hover{filter:none;color:var(--on-surface)}
+  .nav-tab[aria-selected="true"]{color:var(--on-surface);font-weight:600}
+  .nav-tab[aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--primary-container);border-radius:999px}
+  #langSwitch button.active{background:var(--primary-container);color:var(--on-primary-container);font-weight:700}
+  .badge{font-family:var(--mono);font-size:10px;background:var(--primary);color:var(--on-primary);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:600}
   main{padding-top:24px}
 
   .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
@@ -390,57 +395,71 @@ tailwind.config = {
     <p class="note">Misafir destesi sadece bu tarayıcıda durur. Sonra giriş yaparsan hesabına aktarabilirsin.</p>
   </div>
 
-  <div id="app" hidden>
-    <div class="topbar" id="topbar">
-      <header>
-        <h1 id="appTitle">Kelime <em>Defteri</em></h1>
-        <div>
-          <div class="controls-row">
-            <button type="button" class="theme-toggle" id="tutBtn" aria-label="Nasıl kullanılır?">?</button>
-            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Temayı değiştir"></button>
-            <div class="langsw" id="langSwitch">
-              <button type="button" data-lang="en">EN</button>
-              <button type="button" data-lang="de">DE</button>
-              <button type="button" data-lang="fr">FR</button>
-              <button type="button" data-lang="zh">ZH</button>
+  <div id="app" hidden class="min-h-screen bg-surface text-on-surface font-body-md antialiased">
+    <header class="sticky top-0 z-50 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(38,28,44,0.08)] transition-colors" id="topbar">
+      <div class="max-w-7xl mx-auto px-4 md:px-margin pt-3">
+        <div class="flex items-center justify-between gap-3 pb-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <svg class="h-8 w-8 rounded-lg shrink-0" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100" height="100" rx="24" fill="var(--on-primary-fixed-variant)"/>
+              <path d="M50 30 C 44 26, 32 26, 22 28 C 20.9 28.2, 20 29.1, 20 30.2 L 20 72 C 20 73.1, 20.9 74, 22 74 C 32 72, 44 72, 50 76 C 56 72, 68 72, 78 74 C 79.1 74, 80 73.1, 80 72 L 80 30.2 C 80 29.1, 79.1 28.2, 78 28 C 68 26, 56 26, 50 30 Z" fill="var(--primary-fixed)" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round"/>
+              <line x1="50" y1="30" x2="50" y2="76" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="65" cy="56" r="5" fill="var(--primary)"/>
+            </svg>
+            <div class="flex flex-col min-w-0 leading-none">
+              <span class="font-headline-sm text-headline-sm text-on-surface truncate" id="appTitle">Kelime <em class="not-italic text-primary">Defteri</em></span>
+              <span class="font-label-sm text-label-sm text-on-surface-variant italic hidden sm:inline">Kişisel Dil Günlüğü</span>
             </div>
           </div>
-          <div class="stats" id="stats"></div>
-          <div class="who" id="who"></div>
+          <div class="flex items-center gap-1.5 md:gap-2 shrink-0">
+            <div class="hidden sm:flex items-center p-0.5 rounded-full bg-surface-container-low shadow-sm" id="langSwitch">
+              <button type="button" data-lang="en" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">EN</button>
+              <button type="button" data-lang="de" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">DE</button>
+              <button type="button" data-lang="fr" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">FR</button>
+              <button type="button" data-lang="zh" class="px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">ZH</button>
+            </div>
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface" title="Çalışma serisi — art arda kaç gündür tekrar yapıyorsun">
+              <span class="text-sm leading-none">🔥</span><span class="font-label-sm text-label-sm font-semibold" id="streakDays">0 gün</span>
+            </div>
+            <button type="button" id="tutBtn" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" aria-label="Nasıl kullanılır?"><span class="material-symbols-outlined text-[18px]">help</span></button>
+            <button type="button" id="themeToggle" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" aria-label="Temayı değiştir"><span class="material-symbols-outlined text-[18px]" id="themeIcon">dark_mode</span></button>
+            <div id="who" class="who"></div>
+          </div>
         </div>
-      </header>
-      <div id="guestBar" class="guest-bar" hidden>
-        <span>Misafir modundasın — desten sadece bu tarayıcıda duruyor.</span>
-        <button id="toLoginBtn">Giriş yap</button>
+        <div id="guestBar" class="flex items-center justify-between gap-2 flex-wrap bg-primary-fixed/40 border-l-4 border-primary rounded-lg px-3 py-2 mb-2 text-body-sm text-on-surface" hidden>
+          <span>Misafir modundasın — desten sadece bu tarayıcıda duruyor.</span>
+          <button id="toLoginBtn" class="px-3 py-1.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-semibold shrink-0">Giriş yap</button>
+        </div>
+        <div class="flex flex-wrap items-stretch gap-2 pb-2.5">
+          <input id="wordInput" class="flex-1 min-w-[200px] px-3.5 py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/25 transition-all" placeholder="Kelime veya cümle/kalıp yaz (birden fazlaysa virgülle ayır) ve Enter'a bas" autocomplete="off">
+          <button type="button" id="gearBtn" class="w-11 shrink-0 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface flex items-center justify-center" aria-label="Üretme ayarları"><span class="material-symbols-outlined text-[20px]">tune</span></button>
+          <button type="button" id="addBtn" class="shrink-0 px-5 py-2.5 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold hover:shadow-[0_6px_16px_rgba(212,136,59,0.28)] transition-all">Karta çevir</button>
+        </div>
+        <div class="gen hidden flex-wrap gap-2.5 items-center bg-surface-container-low rounded-lg p-2.5 mb-2.5" id="genPanel">
+          <label for="level" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Seviye</label>
+          <select id="level" class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
+          <label for="topic" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Konu</label>
+          <input id="topic" class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm flex-1 min-w-[140px]" placeholder="serbest (örn. iş hayatı)">
+          <label for="howmany" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Adet</label>
+          <select id="howmany" class="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm"><option>5</option><option selected>8</option><option>12</option></select>
+          <button type="button" id="genBtn" class="px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold shadow-sm">En sık kullanılanları getir</button>
+        </div>
+        <nav role="tablist" class="flex items-center gap-5 overflow-x-auto pb-0 -mb-px" id="mainNav" style="scrollbar-width:none">
+          <button type="button" role="tab" aria-selected="true" data-tab="study" class="nav-tab">Bugün<span class="badge" id="dueBadge" hidden></span></button>
+          <button type="button" role="tab" aria-selected="false" data-tab="leech" class="nav-tab">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
+          <button type="button" role="tab" aria-selected="false" data-tab="deck" class="nav-tab">Deste</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="quiz" class="nav-tab">Alıştırma</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="match" class="nav-tab">Eşleştirme</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="reading" class="nav-tab">Okuma &amp; Pinyin</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="write" class="nav-tab">Cümle Kurma</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="phrases" class="nav-tab">Kalıplar</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="grammar" class="nav-tab">Dilbilgisi</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="test" class="nav-tab">Genel Test<span class="badge" id="wrongBadge" hidden></span></button>
+        </nav>
       </div>
-      <div class="entry">
-        <input id="wordInput" placeholder="Kelime veya cümle/kalıp yaz (birden fazlaysa virgülle ayır) ve Enter'a bas" autocomplete="off">
-        <button class="ghost gear" id="gearBtn" aria-label="Üretme ayarları">⚙</button>
-        <button id="addBtn">Karta çevir</button>
-      </div>
-      <div class="gen">
-        <label for="level">Seviye</label>
-        <select id="level"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option></select>
-        <label for="topic">Konu</label>
-        <input id="topic" placeholder="serbest (örn. iş hayatı)" style="width:170px">
-        <label for="howmany">Adet</label>
-        <select id="howmany"><option>5</option><option selected>8</option><option>12</option></select>
-        <button class="ghost" id="genBtn">En sık kullanılanları getir</button>
-      </div>
-      <nav role="tablist">
-        <button role="tab" aria-selected="true" data-tab="study">Tekrar<span class="badge" id="dueBadge" hidden></span></button>
-        <button role="tab" aria-selected="false" data-tab="leech">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
-        <button role="tab" aria-selected="false" data-tab="deck">Deste</button>
-        <button role="tab" aria-selected="false" data-tab="quiz">Alıştırma</button>
-        <button role="tab" aria-selected="false" data-tab="match">Eşleştirme</button>
-        <button role="tab" aria-selected="false" data-tab="test">Genel Test<span class="badge" id="wrongBadge" hidden></span></button>
-        <button role="tab" aria-selected="false" data-tab="write">Cümle kur</button>
-        <button role="tab" aria-selected="false" data-tab="phrases">Kalıplar</button>
-        <button role="tab" aria-selected="false" data-tab="reading">Okuma</button>
-        <button role="tab" aria-selected="false" data-tab="grammar">Dilbilgisi</button>
-      </nav>
-    </div>
-    <main>
+    </header>
+    <main class="max-w-7xl mx-auto px-4 md:px-margin py-space-lg">
+      <div id="stats" class="hidden"></div>
       <section id="study"></section>
       <section id="leech" hidden></section>
       <section id="deck" hidden></section>
@@ -452,6 +471,9 @@ tailwind.config = {
       <section id="reading" hidden></section>
       <section id="grammar" hidden></section>
     </main>
+    <footer class="w-full bg-surface-container-low/70 py-space-sm mt-6 shadow-[0_-1px_6px_rgba(38,28,44,0.05)]">
+      <div class="max-w-7xl mx-auto px-4 md:px-margin flex flex-col md:flex-row items-center justify-between gap-2 font-label-sm text-label-sm text-on-surface-variant" id="footerStats"></div>
+    </footer>
   </div>
 </div>
 
@@ -689,6 +711,93 @@ function renderStats(){
   const lb = $("#leechBadge");
   lb.hidden = !lc; lb.textContent = lc;
   updateWrongBadge();
+  renderFooterStats();
+}
+
+/* ---------- günlük hedef, seri ve puan sistemi ----------
+   Supabase şemasında bu alanlar yok (kart tablosuna dokunmuyoruz), bu yüzden
+   mevcut "test geçmişi / yanlış havuzu" örüntüsüyle aynı şekilde, dile göre
+   anahtarlanmış localStorage'da tutuluyor — cihazlar arası senkron olmaz ama
+   gerçek, çalışan bir özellik. */
+const STATS_KEY = () => `kelime-defteri:gunluk:${LANG}`;
+const GOAL_KEY = () => `kelime-defteri:hedef:${LANG}`;
+const DEFAULT_GOAL = 20;
+function todayStr(d = new Date()){ return d.toISOString().slice(0,10); }
+function yesterdayStr(){ return todayStr(new Date(Date.now() - DAY)); }
+function loadDailyStats(){
+  let s;
+  try{ s = JSON.parse(localStorage.getItem(STATS_KEY())); }catch(e){ s = null; }
+  const defaults = { date: todayStr(), newCount: 0, reviewCount: 0, points: 0, streakDays: 0, lastStudyDate: null, totalPoints: 0 };
+  if(!s) return defaults;
+  s = Object.assign({}, defaults, s);
+  if(s.date !== todayStr()){
+    // yeni gün: günlük sayaçları sıfırla ama seriyi/toplam puanı koru
+    s.date = todayStr();
+    s.newCount = 0; s.reviewCount = 0; s.points = 0;
+  }
+  return s;
+}
+function saveDailyStats(s){ try{ localStorage.setItem(STATS_KEY(), JSON.stringify(s)); }catch(e){ console.error(e); } }
+function dailyGoal(){
+  const v = parseInt(localStorage.getItem(GOAL_KEY()), 10);
+  return Number.isFinite(v) && v > 0 ? v : DEFAULT_GOAL;
+}
+function setDailyGoal(n){
+  n = Math.max(1, Math.min(200, parseInt(n,10) || DEFAULT_GOAL));
+  localStorage.setItem(GOAL_KEY(), String(n));
+  renderFooterStats();
+  if(!$("#study").hidden) renderStudy();
+}
+function recordStudyAction(isNew, points){
+  const s = loadDailyStats();
+  if(isNew) s.newCount++; else s.reviewCount++;
+  s.points += points;
+  s.totalPoints = (s.totalPoints || 0) + points;
+  const today = todayStr();
+  if(s.lastStudyDate !== today){
+    s.streakDays = (s.lastStudyDate === yesterdayStr()) ? s.streakDays + 1 : 1;
+    s.lastStudyDate = today;
+  }
+  saveDailyStats(s);
+}
+function recallRate(){
+  if(!deck.length) return null;
+  const totals = deck.reduce((m,c) => { m.reps += (c.reps||0) + (c.lapses||0); m.lapses += (c.lapses||0); return m; }, {reps:0, lapses:0});
+  if(!totals.reps) return null;
+  return Math.max(0, Math.round((1 - totals.lapses/totals.reps) * 100));
+}
+function lastReviewLabel(){
+  const last = deck.reduce((m,c) => c.lastDone && c.lastDone > m ? c.lastDone : m, 0);
+  if(!last) return "henüz yok";
+  const mins = Math.round((Date.now() - last) / 60000);
+  if(mins < 1) return "az önce";
+  if(mins < 60) return `${mins} dk önce`;
+  const hrs = Math.round(mins/60);
+  if(hrs < 24) return `${hrs} sa önce`;
+  return `${Math.round(hrs/24)} gün önce`;
+}
+function renderFooterStats(){
+  const s = loadDailyStats();
+  const goal = dailyGoal();
+  const done = s.newCount + s.reviewCount;
+  const pct = Math.min(100, Math.round((done/goal)*100));
+  const streakEl = $("#streakDays");
+  if(streakEl) streakEl.textContent = `${s.streakDays || 0} gün`;
+  const recall = recallRate();
+  const el = $("#footerStats");
+  if(el) el.innerHTML = `
+    <div class="flex items-center gap-space-md">
+      <span class="flex items-center gap-1.5 font-medium text-on-surface"><span class="material-symbols-outlined text-[15px] text-primary">menu_book</span>Bugün: ${done}/${goal} kelime</span>
+      <span class="text-outline-variant">•</span>
+      <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-tertiary">verified</span>Hatırlama: ${recall===null?"—":"%"+recall}</span>
+      <span class="text-outline-variant">•</span>
+      <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-secondary">schedule</span>Son tekrar: ${lastReviewLabel()}</span>
+    </div>
+    <div class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant bg-surface-container-lowest/80 px-3 py-1 rounded-full shadow-sm">
+      <span class="font-semibold text-on-surface">${pct}%</span><span>günlük hedef</span>
+      <span class="mx-1 text-outline-variant">•</span>
+      <span class="font-semibold text-on-surface">${s.points||0}</span><span>bugünkü puan</span>
+    </div>`;
 }
 function renderWho(){
   const el = $("#who");
@@ -804,21 +913,26 @@ function peek(g){
 }
 function learned(){
   const card = current;
+  const wasNew = card.reps === 0;
   card.reps++;
   card.interval = 21;
   card.due = Date.now() + 21 * DAY;
   toast(`${card.word} · 21 gün sonra`);
   store.update(card);
+  recordStudyAction(wasNew, 15);
   roundIds?.delete(card.id);
   revealed = false; grading = false;
   renderStats(); renderStudy();
 }
+const GRADE_POINTS = {0:2, 1:5, 2:10, 3:15};
 function grade(g){
   const card = current;
+  const wasNew = card.reps === 0;
   schedule(card, g);
   const when = g === 0 ? "1 dakika" : (card.interval < 1 ? "1 günden az" : card.interval + " gün");
   toast(`${card.word} · ${when} sonra`);
   store.update(card);
+  recordStudyAction(wasNew, GRADE_POINTS[g] ?? 5);
   roundIds?.delete(card.id);
   revealed = false; grading = false;
   renderStats(); renderStudy();
@@ -2033,7 +2147,8 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
 
 /* ---------- tema ---------- */
 function syncThemeToggle(){
-  $("#themeToggle").textContent = theme === "dark" ? "☀" : "🌙";
+  const icon = $("#themeIcon");
+  if(icon) icon.textContent = theme === "dark" ? "light_mode" : "dark_mode";
 }
 function toggleTheme(){
   theme = theme === "dark" ? "light" : "dark";
@@ -2094,7 +2209,6 @@ function playTitleTypewriter(){
   }, 70);
 }
 renderTitleStatic();
-setInterval(playTitleTypewriter, 45000);
 
 /* ---------- tanıtım turu ---------- */
 const TUTORIAL_KEY = "kelime-defteri:tutorial-seen";
