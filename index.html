@@ -395,7 +395,7 @@ tailwind.config = {
   </div>
 
   <div id="app" hidden class="min-h-screen bg-surface text-on-surface font-body-md antialiased">
-    <header class="fixed top-0 inset-x-0 z-50 bg-surface/95 backdrop-blur-md shadow-[0_1px_8px_rgba(38,28,44,0.08)] transition-colors" id="topbar">
+    <header class="relative z-30 bg-surface/95 backdrop-blur-md shadow-[0_1px_8px_rgba(38,28,44,0.08)] transition-colors" id="topbar">
       <div class="max-w-7xl mx-auto px-4 md:px-margin pt-3">
         <div class="flex items-center justify-between gap-3 pb-2">
           <div class="flex items-center gap-2.5 min-w-0">
@@ -2693,17 +2693,6 @@ $("#sidebarCloseBtn").onclick = closeSidebar;
 $("#sidebarOverlay").onclick = closeSidebar;
 document.addEventListener("keydown", e => { if(e.key === "Escape") closeSidebar(); });
 
-/* ---------- header artık fixed; #appMain'e header yüksekliği kadar boşluk ver ---------- */
-function syncHeaderOffset(){
-  const topbar = $("#topbar"), main = $("#appMain");
-  if(topbar && main) main.style.paddingTop = (topbar.offsetHeight + 20) + "px";
-}
-if("ResizeObserver" in window){
-  new ResizeObserver(syncHeaderOffset).observe($("#topbar"));
-}else{
-  addEventListener("resize", syncHeaderOffset);
-}
-syncHeaderOffset();
 
 /* ---------- tema ---------- */
 function syncThemeToggle(){
