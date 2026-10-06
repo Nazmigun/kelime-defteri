@@ -448,6 +448,7 @@ tailwind.config = {
           <button type="button" role="tab" aria-selected="true" data-tab="study" class="nav-tab">Bugün<span class="badge" id="dueBadge" hidden></span></button>
           <button type="button" role="tab" aria-selected="false" data-tab="leech" class="nav-tab">Zorlandıklarım<span class="badge" id="leechBadge" hidden></span></button>
           <button type="button" role="tab" aria-selected="false" data-tab="deck" class="nav-tab">Deste</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="groups" class="nav-tab">Gruplar</button>
           <button type="button" role="tab" aria-selected="false" data-tab="quiz" class="nav-tab">Alıştırma</button>
           <button type="button" role="tab" aria-selected="false" data-tab="match" class="nav-tab">Eşleştirme</button>
           <button type="button" role="tab" aria-selected="false" data-tab="reading" class="nav-tab">Okuma &amp; Pinyin</button>
@@ -463,6 +464,7 @@ tailwind.config = {
       <section id="study"></section>
       <section id="leech" hidden></section>
       <section id="deck" hidden></section>
+      <section id="groups" hidden></section>
       <section id="quiz" hidden></section>
       <section id="match" hidden></section>
       <section id="test" hidden></section>
@@ -1365,6 +1367,89 @@ $("#deck").addEventListener("click", async e => {
   }
 });
 
+/* ---------- gruplar ----------
+   Deste büyüdükçe hepsiyle birden çalışmak zorlaşıyor; kartları rastgele 10'arlı
+   gruplara ayırıp her gruba ayrı ayrı çalışma/alıştırma/eşleştirme başlatılabiliyor.
+   Gruplama dile göre localStorage'da saklanıyor, yeni kartlar otomatik olarak
+   dolmamış gruplara ya da yeni bir gruba ekleniyor. */
+const GROUP_SIZE = 10;
+const GROUPS_KEY = () => `kelime-defteri:gruplar:${LANG}`;
+function loadGroupsRaw(){
+  try{ const g = JSON.parse(localStorage.getItem(GROUPS_KEY())); return Array.isArray(g) ? g : []; }catch(e){ return []; }
+}
+function saveGroups(g){ try{ localStorage.setItem(GROUPS_KEY(), JSON.stringify(g)); }catch(e){ console.error(e); } }
+function loadGroups(){
+  const deckIds = new Set(deck.map(c => c.id));
+  let groups = loadGroupsRaw().map(g => g.filter(id => deckIds.has(id))).filter(g => g.length);
+  const grouped = new Set(groups.flat());
+  const ungrouped = shuffled(deck.map(c => c.id).filter(id => !grouped.has(id)));
+  let gi = groups.length - 1;
+  while(ungrouped.length && gi >= 0 && groups[gi].length < GROUP_SIZE) groups[gi].push(ungrouped.shift());
+  while(ungrouped.length) groups.push(ungrouped.splice(0, GROUP_SIZE));
+  saveGroups(groups);
+  return groups;
+}
+function reshuffleGroups(){
+  localStorage.removeItem(GROUPS_KEY());
+  renderGroups();
+}
+function groupCardHtml(ids, i){
+  const cards = ids.map(id => deck.find(c => c.id === id)).filter(Boolean);
+  const dueCount = cards.filter(c => c.due <= Date.now()).length;
+  const preview = cards.slice(0,5).map(c => c.word).join(" · ");
+  const enough = cards.length >= 4;
+  return `
+    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+      <div class="flex items-center justify-between">
+        <span class="font-headline-sm text-headline-sm text-on-surface">Grup ${i+1}</span>
+        <span class="font-label-sm text-label-sm text-on-surface-variant">${cards.length} kelime${dueCount ? ` • ${dueCount} tekrar bekliyor` : ""}</span>
+      </div>
+      <p class="font-body-sm text-body-sm text-on-surface-variant truncate">${preview}${cards.length>5?"…":""}</p>
+      <div class="flex flex-wrap gap-2 mt-1">
+        <button type="button" data-study-group="${i}" class="px-3 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">style</span>Çalış</button>
+        <button type="button" data-quiz-group="${i}" ${enough?"":"disabled"} class="px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-sm text-label-sm font-semibold flex items-center gap-1 ${enough?"":"opacity-40 cursor-not-allowed"}"><span class="material-symbols-outlined text-[16px]">quiz</span>Alıştırma</button>
+        <button type="button" data-match-group="${i}" ${enough?"":"disabled"} class="px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-sm text-label-sm font-semibold flex items-center gap-1 ${enough?"":"opacity-40 cursor-not-allowed"}"><span class="material-symbols-outlined text-[16px]">join_inner</span>Eşleştirme</button>
+      </div>
+    </div>`;
+}
+function renderGroups(){
+  const el = $("#groups");
+  if(deck.length < 4){
+    el.innerHTML = `<div class="empty"><b>Deste küçük</b>Gruplara ayırabilmem için önce birkaç kelime ekle.</div>`;
+    return;
+  }
+  const groups = loadGroups();
+  el.innerHTML = `
+    <div class="flex items-center justify-between mb-space-md flex-wrap gap-2">
+      <div>
+        <h1 class="font-headline-lg text-headline-lg text-on-surface">Çalışma Grupları</h1>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Desten rastgele ${GROUP_SIZE}'arlı gruplara ayrıldı — tek seferde tüm desteyle değil, küçük gruplarla çalışmak daha kolay ezberletir.</p>
+      </div>
+      <button type="button" id="reshuffleGroups" class="px-4 py-2 rounded-full bg-surface-container-low text-on-surface font-label-sm text-label-sm font-semibold flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">shuffle</span>Grupları karıştır</button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+      ${groups.map((ids,i) => groupCardHtml(ids,i)).join("")}
+    </div>`;
+  $("#reshuffleGroups").onclick = reshuffleGroups;
+  el.querySelectorAll("[data-study-group]").forEach(b => b.onclick = () => startGroupStudy(+b.dataset.studyGroup));
+  el.querySelectorAll("[data-quiz-group]").forEach(b => { if(!b.disabled) b.onclick = () => startGroupQuiz(+b.dataset.quizGroup); });
+  el.querySelectorAll("[data-match-group]").forEach(b => { if(!b.disabled) b.onclick = () => startGroupMatch(+b.dataset.matchGroup); });
+}
+function startGroupStudy(i){
+  const ids = (loadGroups()[i] || []).filter(id => deck.some(c => c.id === id));
+  roundIds = new Set(ids); roundNum = 1; roundStopped = false; revealed = false; grading = false;
+  showTab("study"); renderStudy();
+}
+function startGroupQuiz(i){
+  const ids = (loadGroups()[i] || []).filter(id => deck.some(c => c.id === id));
+  showTab("quiz"); buildQuiz(ids);
+}
+function startGroupMatch(i){
+  const ids = (loadGroups()[i] || []).filter(id => deck.some(c => c.id === id));
+  matchGroupScope = ids; matchState = null;
+  showTab("match"); renderMatch();
+}
+
 /* ---------- kelime ekleme ---------- */
 async function addWord(){
   const raw = $("#wordInput").value.trim();
@@ -1706,18 +1791,22 @@ $("#quiz").addEventListener("click", async e => {
 
 let quizHistory = [];
 let quizSession = null; // {questions, idx, points, streak, maxStreak, answers:[idx|null]}
+let currentQuizScope = null; // bir "grup"tan başlatıldıysa o grubun kart id'leri
 
 function quizMultiplier(streak){ return streak >= 5 ? 2 : streak >= 3 ? 1.5 : 1; }
 
-async function buildQuiz(){
+async function buildQuiz(scopeIds){
+  currentQuizScope = scopeIds || null;
   const el = $("#quiz");
-  const words = deck.length >= 4 && deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck;
+  const words = currentQuizScope
+    ? deck.filter(c => currentQuizScope.includes(c.id))
+    : (deck.length >= 4 && deck.filter(c => c.pos !== "kalıp").length >= 4 ? deck.filter(c => c.pos !== "kalıp") : deck);
   if(words.length < 4){
     el.innerHTML = `<div class="empty"><b>En az 4 kelime/kart gerek</b>Alıştırma üretebilmem için desteni biraz doldur.</div>`;
     return;
   }
   el.innerHTML = `<p class="loading">Sorular yazılıyor…</p>`;
-  const pool = words.slice().sort((a,b)=>a.due-b.due).slice(0,20);
+  const pool = currentQuizScope ? words.slice() : words.slice().sort((a,b)=>a.due-b.due).slice(0,20);
   const focus = pool.slice().sort(() => Math.random() - 0.5).slice(0,10).map(d=>d.word);
   const isZh = (LANG === "zh");
   try{
@@ -1762,6 +1851,7 @@ function renderQuizQuestion(){
             <div class="flex items-center gap-space-xs">
               <span class="px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm uppercase tracking-wider">${LANG_NAMES[LANG]}</span>
               <span class="font-label-md text-label-md text-on-surface-variant font-medium">Boşluk Doldurma Alıştırması</span>
+              ${currentQuizScope ? `<button type="button" id="exitGroupQuiz" class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant hover:text-on-surface">Grup modundan çık</button>` : ""}
             </div>
             <div class="flex items-center gap-space-sm font-label-md text-label-md">
               <span class="text-on-surface font-semibold">Soru ${i+1} / ${s.questions.length}</span>
@@ -1879,6 +1969,8 @@ function renderQuizQuestion(){
     if(s.idx < s.questions.length - 1){ s.idx++; renderQuizQuestion(); }
     else finishQuizSession();
   };
+  const exitBtn = $("#exitGroupQuiz");
+  if(exitBtn) exitBtn.onclick = () => { currentQuizScope = null; buildQuiz(); };
 }
 function answerQuiz(idx){
   const s = quizSession;
@@ -1906,14 +1998,19 @@ function finishQuizSession(){
       <button type="button" id="requiz" class="mt-2 px-6 py-3 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg font-semibold">Yeni set üret</button>
     </div>`;
   quizSession = null;
-  $("#requiz").onclick = buildQuiz;
+  $("#requiz").onclick = () => buildQuiz(currentQuizScope);
 }
 
 /* ---------- eşleştirme ---------- */
 const MATCH_SIZE = 6;
 let matchState = null;
+let matchGroupScope = null; // bir "grup"tan başlatıldıysa o grubun kart id'leri
 
 function matchPool(){
+  if(matchGroupScope){
+    const scoped = deck.filter(c => matchGroupScope.includes(c.id));
+    if(scoped.length >= 4) return scoped;
+  }
   const words = deck.filter(c => c.pos !== "kalıp");
   return words.length >= 4 ? words : deck;
 }
@@ -1950,7 +2047,10 @@ function renderMatch(){
     return `<button type="button" class="${cls}" data-side="${side}" data-idx="${i}">${label}</button>`;
   };
   el.innerHTML = `
-    <div class="toolbar"><div class="save-state">${s.matched.size} / ${s.pool.length} eşleşti</div></div>
+    <div class="toolbar">
+      <div class="save-state">${s.matched.size} / ${s.pool.length} eşleşti</div>
+      ${matchGroupScope ? `<button class="ghost" id="exitGroupMatch" style="padding:6px 12px;font-size:12px">Grup modundan çık</button>` : ""}
+    </div>
     <div class="match-grid">
       <div class="match-col">${s.left.map((c,i) => item("left", i, c)).join("")}</div>
       <div class="match-col">${s.right.map((c,i) => item("right", i, c)).join("")}</div>
@@ -1986,6 +2086,7 @@ function matchClick(side, idx){
 }
 $("#match").addEventListener("click", e => {
   if(e.target.closest("#newMatchBtn")){ newMatchRound(); renderMatch(); return; }
+  if(e.target.closest("#exitGroupMatch")){ matchGroupScope = null; matchState = null; renderMatch(); return; }
   const b = e.target.closest(".match-item");
   if(!b || b.classList.contains("matched")) return;
   matchClick(b.dataset.side, +b.dataset.idx);
@@ -2530,21 +2631,27 @@ Sadece geçerli JSON döndür:
 }
 
 /* ---------- sekmeler ---------- */
+const ALL_TABS = ["study","leech","deck","groups","quiz","match","test","write","phrases","reading","grammar"];
 function renderTab(tab){
   if(tab === "study"){ revealed = false; grading = false; resetStudyRound(); renderStudy(); }
   if(tab === "leech") enterLeech();
   if(tab === "deck") renderDeck();
+  if(tab === "groups") renderGroups();
   if(tab === "quiz") buildQuiz();
-  if(tab === "match") renderMatch();
+  if(tab === "match"){ matchGroupScope = null; renderMatch(); }
   if(tab === "test") renderTestMenu();
   if(tab === "write") newPrompt();
   if(tab === "phrases") renderPhrases();
   if(tab === "reading") renderReading();
   if(tab === "grammar") renderGrammar();
 }
+function showTab(tab){
+  document.querySelectorAll("nav button[role=tab]").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === tab ? "true" : "false"));
+  ALL_TABS.forEach(id => { const s = $("#"+id); if(s) s.hidden = (id !== tab); });
+}
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
-  ["study","leech","deck","quiz","match","test","write","phrases","reading","grammar"].forEach(id => $("#"+id).hidden = (id !== b.dataset.tab));
+  ALL_TABS.forEach(id => { const s = $("#"+id); if(s) s.hidden = (id !== b.dataset.tab); });
   renderTab(b.dataset.tab);
 });
 
@@ -2620,6 +2727,7 @@ const TUTORIAL_SLIDES = [
   {icon:"🔁", title:"Tekrar", text:"Aralıklı tekrar burada işler. Kartı çevirip cevabı gör, ne kadar zorlandığını işaretle — sağa kaydırırsan 'öğrendim' der, sola kaydırırsan tekrar sorulur."},
   {icon:"⚠️", title:"Zorlandıklarım", text:"En az 2 kez 'Bilmiyorum' dediğin kelimeler burada birikir; normal sırayı beklemeden ekstra pratik yapabilirsin."},
   {icon:"🗂️", title:"Deste", text:"Tüm kartların burada. Filtreleyebilir, en çok zorlandıklarına göre sıralayabilir, kartlara tıklayıp çevirebilir, 🔊 ile telaffuzunu dinleyebilirsin."},
+  {icon:"🔟", title:"Gruplar", text:"Deste büyüyünce tek seferde hepsiyle uğraşmak yorucu olabilir. Gruplar sekmesi desteni rastgele 10'arlı kümelere ayırır; her gruba ayrı ayrı çalış, alıştırma veya eşleştirme başlatabilirsin."},
   {icon:"❓", title:"Alıştırma", text:"Destendeki kelimelerle otomatik boşluk doldurma testi üretilir."},
   {icon:"🔗", title:"Eşleştirme", text:"Destenden seçilen kelimeleri karşılıklı iki sütunda karşılıklarıyla eşleştir. Doğru eşleşme yeşile döner, yanlış olan kısa süre kırmızı yanıp söner."},
   {icon:"🎯", title:"Genel Test", text:"Destenin genelini kapsayan 20 soruluk bir sınav. Sonucun kaydedilir, yanlış yaptıkların ayrı bir havuzda birikir ve istediğin an sadece onları tekrar çözebilirsin."},
