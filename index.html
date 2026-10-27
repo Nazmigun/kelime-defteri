@@ -1208,6 +1208,36 @@ function cardSuccessPct(c){
   if(!total) return null;
   return Math.max(0, Math.min(100, Math.round((1 - (c.lapses||0)/total) * 100)));
 }
+/* ---------- yinelenen kelimeleri bul/temizle ----------
+   Aynı kelime birden fazla kez (ör. "en sık kullanılanları getir" AI'nın
+   kendi tekrar-etme talimatına uymaması yüzünden) ayrı kart olarak eklenmiş
+   olabilir. Bunları tek karta indirger, en çok ilerleme kaydedileni tutar. */
+function duplicateWordGroups(){
+  const byWord = new Map();
+  deck.forEach(c => {
+    const key = (c.word||"").trim().toLowerCase();
+    if(!key) return;
+    if(!byWord.has(key)) byWord.set(key, []);
+    byWord.get(key).push(c);
+  });
+  return [...byWord.values()].filter(g => g.length > 1);
+}
+async function dedupeDeck(){
+  const groups = duplicateWordGroups();
+  if(!groups.length){ toast("Yinelenen kelime yok"); return; }
+  let removed = 0;
+  for(const g of groups){
+    g.sort((a,b) => ((b.reps||0)+(b.lapses||0)) - ((a.reps||0)+(a.lapses||0)));
+    const toRemove = g.slice(1);
+    for(const c of toRemove){
+      await store.remove(c.id);
+      deck = deck.filter(x => x.id !== c.id);
+      removed++;
+    }
+  }
+  renderDeck(); renderStats();
+  toast(`${removed} yinelenen kart temizlendi`);
+}
 function filterDeck(){
   const q = deckFilter.q.trim().toLowerCase();
   let list = deck.filter(w => {
@@ -1284,8 +1314,14 @@ function renderDeck(){
   const levelBtn = (val,label) => `<button type="button" data-level="${val}" class="px-2.5 py-1 rounded font-label-sm text-label-sm transition-colors ${deckFilter.level===val?"bg-surface-container-lowest text-primary font-semibold shadow-xs":"text-on-surface-variant hover:text-on-surface"}">${label}</button>`;
   const posBtn = (val,label,count) => `<button type="button" data-pos="${val}" class="px-3.5 py-1.5 rounded-full font-label-sm text-label-sm transition-all flex items-center gap-1.5 ${deckFilter.pos===val?"bg-primary text-on-primary font-medium shadow-sm":"bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"}"><span>${label}</span><span class="${deckFilter.pos===val?"bg-on-primary/20":"bg-surface-container-highest"} px-1.5 py-0.2 rounded-full text-[10px]">${count}</span></button>`;
 
+  const dupCount = duplicateWordGroups().reduce((n,g) => n + g.length - 1, 0);
   el.innerHTML = `
     <div class="relative w-full">
+      ${dupCount ? `
+      <div class="flex items-center justify-between gap-2 flex-wrap bg-error-container/50 border-l-4 border-error rounded-lg px-4 py-2.5 mb-space-md text-body-sm text-on-error-container">
+        <span><strong>${dupCount}</strong> yinelenen kelime bulundu — aynı kelime birden fazla kart olarak eklenmiş, bu yüzden tekrar/alıştırma/grup sırasında aynı kelime birden çok kez karşına çıkabiliyor.</span>
+        <button type="button" id="dedupeBtn" class="px-3 py-1.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-semibold shrink-0">Yinelenenleri Temizle</button>
+      </div>` : ""}
       <section class="flex flex-col gap-space-lg mb-space-xl">
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
           <div>
@@ -1360,6 +1396,8 @@ function renderDeck(){
       </footer>` : ""}
     </div>`;
 
+  const dedupeBtn = $("#dedupeBtn");
+  if(dedupeBtn) dedupeBtn.onclick = () => { if(confirm(`${dupCount} yinelenen kart silinecek, her kelimenin en çok ilerleme kaydedilen kopyası tutulacak. Devam edilsin mi?`)) dedupeDeck(); };
   $("#deckSearch").oninput = e => { deckFilter.q = e.target.value; deckFilter.page = 1; renderDeck(); };
   $("#deckSort").onchange = e => { deckFilter.sort = e.target.value; renderDeck(); };
   $("#view-grid").onclick = () => { deckFilter.view = "grid"; renderDeck(); };
@@ -1546,10 +1584,14 @@ $("#genBtn").onclick = async () => {
 Her kelime için mutlaka kısa bir örnek cümle ve Türkçesini de ver, boş bırakma.
 Sadece geçerli JSON dizisi döndür:
 [{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","artikel":"${artikelFieldHint()}","example":"${exampleFieldHint()}","exampleTr":"örnek cümlenin Türkçesi"}]`);
-    deck = (await store.insertMany(out.map(freshCard))).concat(deck);
+    const existing = new Set(deck.map(d => d.word.toLowerCase()));
+    const fresh = out.filter(w => w.word && !existing.has(w.word.toLowerCase()));
+    const skipped = out.length - fresh.length;
+    if(!fresh.length){ toast("Getirilen kelimeler zaten destede"); btn.disabled = false; btn.textContent = "En sık kullanılanları getir"; return; }
+    deck = (await store.insertMany(fresh.map(freshCard))).concat(deck);
     renderDeck(); renderStats();
     if(!$("#study").hidden) renderStudy();
-    toast(out.length + " kelime eklendi");
+    toast(fresh.length + " kelime eklendi" + (skipped ? ` · ${skipped} tanesi zaten destedeydi` : ""));
   }catch(err){ alert("Kelimeler getirilemedi: " + err.message); }
   btn.disabled = false; btn.textContent = "En sık kullanılanları getir";
 };
