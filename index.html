@@ -870,6 +870,12 @@ function renderStudy(){
   const queue = deck.filter(c => roundIds.has(c.id));
 
   if(!queue.length){
+    if(activeGroupIndex !== null){
+      el.innerHTML = `<div class="empty"><b>Grup tamamlandı 🎉</b>Bu gruptaki tüm kartları gözden geçirdin.</div>${groupNextPromptHtml()}`;
+      current = null;
+      bindGroupNextPrompt(() => startGroupStudy(activeGroupIndex));
+      return;
+    }
     const waiting = dueCards().length;
     el.innerHTML = `
       <div class="empty">
@@ -1450,19 +1456,47 @@ function renderGroups(){
   el.querySelectorAll("[data-quiz-group]").forEach(b => { if(!b.disabled) b.onclick = () => startGroupQuiz(+b.dataset.quizGroup); });
   el.querySelectorAll("[data-match-group]").forEach(b => { if(!b.disabled) b.onclick = () => startGroupMatch(+b.dataset.matchGroup); });
 }
+let activeGroupIndex = null; // şu an bir "grup"tan çalışılıyorsa grubun index'i
 function startGroupStudy(i){
   const ids = (loadGroups()[i] || []).filter(id => deck.some(c => c.id === id));
   roundIds = new Set(ids); roundNum = 1; roundStopped = false; revealed = false; grading = false;
+  activeGroupIndex = i;
   showTab("study"); renderStudy();
 }
 function startGroupQuiz(i){
   const ids = (loadGroups()[i] || []).filter(id => deck.some(c => c.id === id));
+  activeGroupIndex = i;
   showTab("quiz"); buildQuiz(ids);
 }
 function startGroupMatch(i){
   const ids = (loadGroups()[i] || []).filter(id => deck.some(c => c.id === id));
   matchGroupScope = ids; matchState = null;
+  activeGroupIndex = i;
   showTab("match"); renderMatch();
+}
+function exitGroupMode(){
+  activeGroupIndex = null; currentQuizScope = null; matchGroupScope = null;
+}
+function groupNextPromptHtml(){
+  if(activeGroupIndex === null) return "";
+  return `
+    <div class="bg-surface-container-low rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm mt-4 max-w-xl mx-auto">
+      <span class="font-label-md text-label-md text-on-surface-variant text-center">Grup ${activeGroupIndex+1} bitti. Şimdi ne yapmak istersin?</span>
+      <div class="flex flex-wrap justify-center gap-2">
+        <button type="button" id="gnpQuiz" class="px-3.5 py-2 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold">Alıştırma</button>
+        <button type="button" id="gnpMatch" class="px-3.5 py-2 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">Eşleştirme</button>
+        <button type="button" id="gnpRepeat" class="px-3.5 py-2 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold">Tekrar et</button>
+        <button type="button" id="gnpBack" class="px-3.5 py-2 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold">Grup sayfasına dön</button>
+      </div>
+    </div>`;
+}
+function bindGroupNextPrompt(repeatFn){
+  if(activeGroupIndex === null) return;
+  const gi = activeGroupIndex;
+  const q = $("#gnpQuiz"); if(q) q.onclick = () => startGroupQuiz(gi);
+  const m = $("#gnpMatch"); if(m) m.onclick = () => startGroupMatch(gi);
+  const r = $("#gnpRepeat"); if(r) r.onclick = repeatFn;
+  const b = $("#gnpBack"); if(b) b.onclick = () => { exitGroupMode(); showTab("groups"); renderGroups(); };
 }
 
 /* ---------- kelime ekleme ---------- */
@@ -1985,7 +2019,7 @@ function renderQuizQuestion(){
     else finishQuizSession();
   };
   const exitBtn = $("#exitGroupQuiz");
-  if(exitBtn) exitBtn.onclick = () => { currentQuizScope = null; buildQuiz(); };
+  if(exitBtn) exitBtn.onclick = () => { exitGroupMode(); buildQuiz(); };
 }
 function answerQuiz(idx){
   const s = quizSession;
@@ -2005,15 +2039,19 @@ function finishQuizSession(){
   const s2 = loadDailyStats();
   s2.points += s.points; s2.totalPoints = (s2.totalPoints||0) + s.points;
   saveDailyStats(s2); renderFooterStats();
+  const gi = activeGroupIndex;
   $("#quiz").innerHTML = `
     <div class="bg-surface-container-lowest rounded-xl p-space-xl shadow-md flex flex-col items-center text-center gap-space-sm max-w-xl mx-auto">
       <span class="material-symbols-outlined text-[48px] text-primary">emoji_events</span>
       <h2 class="font-headline-lg text-headline-lg text-on-surface">${correct} / ${s.questions.length} doğru</h2>
       <p class="font-body-md text-body-md text-on-surface-variant">Bu turda <strong class="text-primary">${s.points} puan</strong> kazandın${s.maxStreak>=3?`, en uzun serin <strong class="text-tertiary">${s.maxStreak}</strong> doğruydu`:""}.</p>
-      <button type="button" id="requiz" class="mt-2 px-6 py-3 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg font-semibold">Yeni set üret</button>
-    </div>`;
+      ${gi === null ? `<button type="button" id="requiz" class="mt-2 px-6 py-3 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg font-semibold">Yeni set üret</button>` : ""}
+    </div>
+    ${gi !== null ? groupNextPromptHtml() : ""}`;
   quizSession = null;
-  $("#requiz").onclick = () => buildQuiz(currentQuizScope);
+  const requizBtn = $("#requiz");
+  if(requizBtn) requizBtn.onclick = () => buildQuiz(currentQuizScope);
+  if(gi !== null) bindGroupNextPrompt(() => startGroupQuiz(gi));
 }
 
 /* ---------- eşleştirme ---------- */
@@ -2070,7 +2108,9 @@ function renderMatch(){
       <div class="match-col">${s.left.map((c,i) => item("left", i, c)).join("")}</div>
       <div class="match-col">${s.right.map((c,i) => item("right", i, c)).join("")}</div>
     </div>
-    ${done ? `<button class="ghost" id="newMatchBtn" style="margin-top:14px">Yeni set</button>` : ""}`;
+    ${done && activeGroupIndex === null ? `<button class="ghost" id="newMatchBtn" style="margin-top:14px">Yeni set</button>` : ""}
+    ${done && activeGroupIndex !== null ? groupNextPromptHtml() : ""}`;
+  if(done && activeGroupIndex !== null) bindGroupNextPrompt(() => { newMatchRound(); renderMatch(); });
 }
 function matchClick(side, idx){
   const s = matchState;
@@ -2101,7 +2141,7 @@ function matchClick(side, idx){
 }
 $("#match").addEventListener("click", e => {
   if(e.target.closest("#newMatchBtn")){ newMatchRound(); renderMatch(); return; }
-  if(e.target.closest("#exitGroupMatch")){ matchGroupScope = null; matchState = null; renderMatch(); return; }
+  if(e.target.closest("#exitGroupMatch")){ exitGroupMode(); matchState = null; renderMatch(); return; }
   const b = e.target.closest(".match-item");
   if(!b || b.classList.contains("matched")) return;
   matchClick(b.dataset.side, +b.dataset.idx);
@@ -2648,12 +2688,13 @@ Sadece geçerli JSON döndür:
 /* ---------- sekmeler ---------- */
 const ALL_TABS = ["study","leech","deck","groups","quiz","match","test","write","phrases","reading","grammar"];
 function renderTab(tab){
+  exitGroupMode(); // sol menüden doğrudan bir sekmeye tıklamak grup bağlamından çıkarır
   if(tab === "study"){ revealed = false; grading = false; resetStudyRound(); renderStudy(); }
   if(tab === "leech") enterLeech();
   if(tab === "deck") renderDeck();
   if(tab === "groups") renderGroups();
   if(tab === "quiz") buildQuiz();
-  if(tab === "match"){ matchGroupScope = null; renderMatch(); }
+  if(tab === "match") renderMatch();
   if(tab === "test") renderTestMenu();
   if(tab === "write") newPrompt();
   if(tab === "phrases") renderPhrases();
