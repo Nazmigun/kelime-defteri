@@ -1,9 +1,6 @@
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+import { guard } from "./_guard.js";
 
-  if (req.method === "OPTIONS") return res.status(200).end();
+export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Sadece GET isteği kabul edilir" });
 
   const key = process.env.EACHLABS_API_KEY;
@@ -11,9 +8,15 @@ export default async function handler(req, res) {
 
   const id = req.query?.id;
   if (!id) return res.status(400).json({ error: "id parametresi eksik" });
+  // Yalnızca tahmin kimliği biçimine izin ver; yol enjeksiyonunu (../ vb.) engeller.
+  if (typeof id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) {
+    return res.status(400).json({ error: "Geçersiz id" });
+  }
+
+  if (!(await guard(req, res, { countUsage: false }))) return;
 
   try {
-    const pollRes = await fetch(`https://api.eachlabs.ai/v1/prediction/${id}`, {
+    const pollRes = await fetch(`https://api.eachlabs.ai/v1/prediction/${encodeURIComponent(id)}`, {
       headers: { "Authorization": `Bearer ${key}` }
     });
     const pollData = await pollRes.json();

@@ -239,6 +239,9 @@ tailwind.config = {
   .study.glow-no{border-color:var(--rose);box-shadow:0 0 0 2px var(--rose),0 0 46px rgba(228,114,140,.45)}
   .study .word{font-family:var(--display);font-size:clamp(38px,8vw,64px);font-weight:900;letter-spacing:-.03em;line-height:1}
   .pinyin{font-family:var(--mono);font-size:.4em;font-weight:400;color:var(--paper-dim);letter-spacing:.02em;vertical-align:middle;margin-left:2px}
+  /* pinyin ton renkleri: 1 kırmızı, 2 yeşil, 3 mavi, 4 mor, hafif ton gri */
+  .tone.t1{color:#d63b3b} .tone.t2{color:#2f9e5b} .tone.t3{color:#3567d6} .tone.t4{color:#8a45c4} .tone.t5{color:inherit;opacity:.7}
+  [data-theme="dark"] .tone.t1{color:#ff7b7b} [data-theme="dark"] .tone.t2{color:#5fd38d} [data-theme="dark"] .tone.t3{color:#7ea6ff} [data-theme="dark"] .tone.t4{color:#c49bff}
   .pinyin-sub{font-family:var(--mono);font-weight:400;color:var(--paper-dim);letter-spacing:.02em;display:inline-block;margin-top:2px}
   .zh-reading-lines{display:flex;flex-direction:column;gap:16px}
   .zh-line{border-left:2px solid var(--line);padding-left:12px}
@@ -468,6 +471,7 @@ tailwind.config = {
         <button type="button" role="tab" aria-selected="false" data-tab="quiz" class="side-nav-tab">Alıştırma</button>
         <button type="button" role="tab" aria-selected="false" data-tab="match" class="side-nav-tab">Eşleştirme</button>
         <button type="button" role="tab" aria-selected="false" data-tab="reading" class="side-nav-tab">Okuma &amp; Pinyin</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="hanzi" class="side-nav-tab">Hanzi Yazma</button>
         <button type="button" role="tab" aria-selected="false" data-tab="write" class="side-nav-tab">Cümle Kurma</button>
         <button type="button" role="tab" aria-selected="false" data-tab="phrases" class="side-nav-tab">Kalıplar</button>
         <button type="button" role="tab" aria-selected="false" data-tab="grammar" class="side-nav-tab">Dilbilgisi</button>
@@ -486,6 +490,7 @@ tailwind.config = {
       <section id="write" hidden></section>
       <section id="phrases" hidden></section>
       <section id="reading" hidden></section>
+      <section id="hanzi" hidden></section>
       <section id="grammar" hidden></section>
     </main>
     <footer class="w-full bg-surface-container-low/70 py-space-sm mt-6 shadow-[0_-1px_6px_rgba(38,28,44,0.05)]">
@@ -495,6 +500,7 @@ tailwind.config = {
 </div>
 
 <div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden>
 
 <div class="tut-overlay" id="tutorial" hidden>
   <div class="tut-card">
@@ -512,19 +518,12 @@ tailwind.config = {
 
 <script>
 /* ============ AYARLAR — Supabase → Settings ============ */
-const SUPABASE_URL  = "https://xrcuonfaxzbyyfhppymw.supabase.co";   // https://xxxx.supabase.co
+// Anon anahtar tarayıcıya açık olmak üzere tasarlanmıştır; veriyi koruyan şey
+// Supabase'deki Row Level Security kurallarıdır (bkz. README).
+const SUPABASE_URL  = "https://xrcuonfaxzbyyfhppymw.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyY3VvbmZheHpieXlmaHBweW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTgzNzgsImV4cCI6MjA5OTY5NDM3OH0.14HoksyGDy71EyNXE2RSQ--o9rdy3CwcAWXabZ3XjGo";   
 /* ====================================================== */
 
-if(SUPABASE_URL.startsWith("BURAYA") || SUPABASE_ANON.startsWith("BURAYA")){
-  document.body.innerHTML = `<pre style="color:#E4728C;font-family:monospace;padding:40px;line-height:1.7;white-space:pre-wrap">
-Supabase ayarları doldurulmamış.
-
-index.html içinde şu iki satırı doldur:
-  const SUPABASE_URL  = "https://xxxxx.supabase.co";
-  const SUPABASE_ANON = "sb_publishable_...";</pre>`;
-  throw new Error("Supabase ayarları eksik");
-}
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -552,6 +551,10 @@ const POS = {isim:"var(--sky)",fiil:"var(--mint)","sıfat":"var(--saffron)",zarf
   edat:"var(--rose)","bağlaç":"var(--rose)","ünlem":"var(--rose)","kalıp":"var(--violet)"};
 const posColor = p => POS[p] || "var(--paper-dim)";
 const $ = s => document.querySelector(s);
+// innerHTML'e giden kullanıcı/AI verisini kaçışla: "<img onerror=…>" gibi bir
+// girdi kod olarak çalışmasın, düz metin olarak görünsün.
+const ESC_MAP = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+function esc(v){ return v == null ? "" : String(v).replace(/[&<>"']/g, ch => ESC_MAP[ch]); }
 
 let deck = [], user = null, guest = false;
 
@@ -656,31 +659,106 @@ function speak(text){
 // hem hanzi hem pinyin'i art arda okumak TTS'in kelimeyi iki kez seslendirmesine yol açtığı için
 // seslendirme sadece hanzi ile yapılır.
 function wordLabel(c){
-  if(c.lang === "zh") return c.artikel ? `${c.word} <span class="pinyin">${c.artikel}</span>` : c.word;
-  return `${c.artikel ? c.artikel + " " : ""}${c.word}`;
+  if(c.lang === "zh") return c.artikel ? `${esc(c.word)} <span class="pinyin">${pinyinHtml(c.artikel, c.word)}</span>` : esc(c.word);
+  return `${c.artikel ? esc(c.artikel) + " " : ""}${esc(c.word)}`;
 }
 // Model bazen "pinyin" alanına yanlışlıkla hanzi'yi tekrar yazıyor; CJK karakteri
 // içeren bir "pinyin" değeri gerçek pinyin değildir, bu yüzden görmezden gel.
 function pyOrNull(py){
   return py && !/[㐀-鿿]/.test(py) ? py : null;
 }
+/* ---------- pinyin ton renklendirmesi ----------
+   Pinyin'i hecelere böler ve her heceyi tonuna göre renklendirir
+   (1. ton kırmızı, 2. yeşil, 3. mavi, 4. mor, hafif ton gri).
+   Model pinyin'i heceler arasında boşluk bırakmadan yazdığı için ("xièxie")
+   geçerli heceler listesiyle geri izlemeli bir bölme yapılır; kelimenin hanzi
+   sayısı biliniyorsa o sayıda heceye bölünen çözüm tercih edilir. */
+const PY_INITIALS = ["","b","p","m","f","d","t","n","l","g","k","h","j","q","x","zh","ch","sh","r","z","c","s","y","w"];
+const PY_FINALS = ["a","o","e","i","u","ü","v","ai","ei","ao","ou","an","en","ang","eng","ong","er","ia","ie","iao","iu","ian","in","iang","ing","iong","ua","uo","uai","ui","uan","un","uang","ue","üe","ve","üan","ün","n","ng","m"];
+const PY_SYLLABLES = new Set();
+PY_INITIALS.forEach(i => PY_FINALS.forEach(f => {
+  if(!i && ["i","u","ü","v","ia","ie","iao","iu","ian","in","iang","ing","iong","ua","uo","uai","ui","uan","un","uang","ue","üe","ve","üan","ün","ong"].includes(f)) return;
+  PY_SYLLABLES.add(i + f);
+}));
+const TONE_MARKS = {"̄":1,"́":2,"̌":3,"̀":4};
+function pyPlain(s){ return s.normalize("NFD").replace(/[̄́̌̀]/g,"").normalize("NFC").toLowerCase(); }
+function pyTone(syl){
+  for(const ch of syl.normalize("NFD")) if(TONE_MARKS[ch]) return TONE_MARKS[ch];
+  return 5;
+}
+// Bir harf öbeğini hece uzunluklarına böler; bölünemezse null döner.
+function pySegment(word, target){
+  const plain = pyPlain(word);
+  if(plain.length !== word.length) return null;
+  let best = null, steps = 0;
+  const path = [];
+  (function dfs(pos){
+    if(++steps > 3000 || (best && (!target || best.length === target))) return;
+    if(pos === plain.length){
+      if(!best || (target && path.length === target)) best = path.slice();
+      return;
+    }
+    // erhua: kelime sonundaki tek "r" ayrı bir hece olarak kabul edilir (yìdiǎnr)
+    if(pos > 0 && pos === plain.length - 1 && plain[pos] === "r"){ path.push(1); dfs(pos + 1); path.pop(); return; }
+    for(let len = Math.min(6, plain.length - pos); len >= 1; len--){
+      const syl = plain.slice(pos, pos + len);
+      if(!PY_SYLLABLES.has(syl)) continue;
+      // a/o/e ile başlayan hece kelime ortasında ancak kesme işaretiyle gelir (kě'ài),
+      // bu yüzden "kěnéng" → kě|néng olur, ken|éng değil
+      if(pos > 0 && /^[aoe]/.test(syl)) continue;
+      // bir hecede en fazla bir ton işareti olabilir
+      if((word.slice(pos, pos + len).normalize("NFD").match(/[̄́̌̀]/g) || []).length > 1) continue;
+      path.push(len); dfs(pos + len); path.pop();
+    }
+  })(0);
+  return best;
+}
+const CJK_RE = /[㐀-鿿]/g;
+function pinyinHtml(text, hanzi){
+  if(text == null) return "";
+  const s = String(text).normalize("NFC");
+  const target = hanzi ? (String(hanzi).match(CJK_RE) || []).length : 0;
+  // harf öbekleri (ü ve tonlu harfler dahil) ile aradaki her şeyi (boşluk, noktalama, ___) ayır
+  const parts = s.split(/([A-Za-zÀ-ɏǖǘǚǜüÜ]+)/);
+  const letterRuns = parts.filter((p,i) => i % 2 === 1).length;
+  return parts.map((p, i) => {
+    if(i % 2 === 0) return esc(p);
+    const seg = pySegment(p, letterRuns === 1 ? target : 0);
+    if(!seg) return esc(p);
+    let pos = 0;
+    return seg.map(len => {
+      const syl = p.slice(pos, pos += len);
+      return `<span class="tone t${pyTone(syl)}">${esc(syl)}</span>`;
+    }).join("");
+  }).join("");
+}
+
 // Çince örnek cümlelerde pinyin, "example" alanının ikinci satırına \n ile eklenir
 // (ayrı bir DB kolonu açmadan hem bulutta hem misafir modunda çalışsın diye).
 function exampleHtml(c){
   if(!c.example) return "";
   if(c.lang === "zh" && c.example.includes("\n")){
     const [hanzi, py] = c.example.split("\n");
-    return `${hanzi}${py ? `<br><span class="pinyin-sub" style="font-size:.85em">${py}</span>` : ""}<br><span style="opacity:.6">${c.exampleTr||""}</span>`;
+    return `${esc(hanzi)}${py ? `<br><span class="pinyin-sub" style="font-size:.85em">${pinyinHtml(py)}</span>` : ""}<br><span style="opacity:.6">${esc(c.exampleTr)}</span>`;
   }
-  return `${c.example}<br><span style="opacity:.6">${c.exampleTr||""}</span>`;
+  return `${esc(c.example)}<br><span style="opacity:.6">${esc(c.exampleTr)}</span>`;
 }
 function speakText(c){
   return c.lang === "zh" ? c.word : (c.artikel ? c.artikel + " " : "") + c.word;
 }
 
+// /api/ask uçları giriş yapan kullanıcıyı Supabase oturum token'ıyla tanır;
+// misafirler token'sız gider ve sunucuda daha düşük bir günlük sınıra tabidir.
+async function authHeaders(){
+  if(guest) return {};
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 async function ask(prompt){
+  const auth = await authHeaders();
   const createRes = await fetch("/api/ask", {
-    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ prompt })
+    method:"POST", headers:{"Content-Type":"application/json", ...auth}, body: JSON.stringify({ prompt })
   });
   const createData = await createRes.json();
   if(!createRes.ok) throw new Error(createData.error || "İstek başarısız");
@@ -691,7 +769,7 @@ async function ask(prompt){
 
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 2000));
-    const statusRes = await fetch(`/api/ask-status?id=${encodeURIComponent(predictionID)}`);
+    const statusRes = await fetch(`/api/ask-status?id=${encodeURIComponent(predictionID)}`, { headers: auth });
     const statusData = await statusRes.json();
     if (!statusRes.ok) throw new Error(statusData.error || "Durum sorgulanamadı");
     if (statusData.status === "success") { text = statusData.text; break; }
@@ -744,8 +822,12 @@ function renderStats(){
 const STATS_KEY = () => `kelime-defteri:gunluk:${LANG}`;
 const GOAL_KEY = () => `kelime-defteri:hedef:${LANG}`;
 const DEFAULT_GOAL = 20;
-function todayStr(d = new Date()){ return d.toISOString().slice(0,10); }
-function yesterdayStr(){ return todayStr(new Date(Date.now() - DAY)); }
+// Yerel takvim günü (YYYY-AA-GG). toISOString() UTC verdiği için Türkiye'de (UTC+3)
+// gece 00:00–03:00 arası önceki güne sayılıyordu; günlük hedef ve seri bozuluyordu.
+function todayStr(d = new Date()){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate() - 1); return todayStr(d); }
 function loadDailyStats(){
   let s;
   try{ s = JSON.parse(localStorage.getItem(STATS_KEY())); }catch(e){ s = null; }
@@ -788,8 +870,21 @@ function recallRate(){
   if(!totals.reps) return null;
   return Math.max(0, Math.round((1 - totals.lapses/totals.reps) * 100));
 }
+// Tekrar geçmişi: hangi kartın ne zaman tekrar edildiği. Veritabanında bunun
+// için kolon olmadığından (dile göre) localStorage'da son 300 kayıt tutulur.
+// "Son tekrar" etiketi ve "Bugünkü Kelime Akışı" bu kayıttan beslenir.
+const ACTIVITY_KEY = () => `kelime-defteri:aktivite:${LANG}`;
+function loadActivity(){
+  try{ const a = JSON.parse(localStorage.getItem(ACTIVITY_KEY())); return Array.isArray(a) ? a : []; }catch{ return []; }
+}
+function logActivity(card){
+  const a = loadActivity();
+  a.push({ id: card.id, t: Date.now() });
+  try{ localStorage.setItem(ACTIVITY_KEY(), JSON.stringify(a.slice(-300))); }catch(e){ console.error(e); }
+}
 function lastReviewLabel(){
-  const last = deck.reduce((m,c) => c.lastDone && c.lastDone > m ? c.lastDone : m, 0);
+  const ids = new Set(deck.map(c => c.id));
+  const last = loadActivity().reduce((m,x) => ids.has(x.id) && x.t > m ? x.t : m, 0);
   if(!last) return "henüz yok";
   const mins = Math.round((Date.now() - last) / 60000);
   if(mins < 1) return "az önce";
@@ -853,7 +948,7 @@ function renderStudy(){
 
   if(roundStopped){
     const next = deck.slice().sort((a,b)=>a.due-b.due)[0];
-    el.innerHTML = `<div class="empty"><b>Tekrar durduruldu</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${next.word}</strong></div>`;
+    el.innerHTML = `<div class="empty"><b>Tekrar durduruldu</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${esc(next.word)}</strong></div>`;
     current = null; return;
   }
 
@@ -861,7 +956,7 @@ function renderStudy(){
     const initial = dueCards();
     if(!initial.length){
       const next = deck.slice().sort((a,b)=>a.due-b.due)[0];
-      el.innerHTML = `<div class="empty"><b>Bugünlük bitti</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${next.word}</strong></div>`;
+      el.innerHTML = `<div class="empty"><b>Bugünlük bitti</b>Sıradaki tekrar ${dueLabel(next)} sonra: <strong style="color:var(--paper)">${esc(next.word)}</strong></div>`;
       current = null; return;
     }
     roundIds = new Set(initial.map(c => c.id));
@@ -949,7 +1044,7 @@ function renderStudy(){
               <div class="stamp ok" id="stampOk">öğrendim</div>
               <div class="stamp no" id="stampNo">tekrar sor</div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
-                <div class="meta" style="--pos:${posColor(current.pos)}">${current.pos} · ${current.level||""}</div>
+                <div class="meta" style="--pos:${posColor(current.pos)}">${esc(current.pos)} · ${esc(current.level)}</div>
                 <button type="button" id="studySpeak" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low hover:bg-surface-container-high text-on-surface transition-colors" aria-label="Seslendir">
                   <span class="material-symbols-outlined text-[16px] text-primary">volume_up</span>
                   <span class="font-label-sm text-label-sm font-semibold">Dinle</span>
@@ -958,7 +1053,7 @@ function renderStudy(){
               <div class="word" style="color:${posColor(current.pos)}">${wordLabel(current)}</div>
               ${revealed ? `
                 <div class="answer">
-                  <div class="tr">${current.tr}</div>
+                  <div class="tr">${esc(current.tr)}</div>
                   <div class="ex">${exampleHtml(current)}</div>
                 </div>
                 ${!grading ? `<div class="swipe-hint"><span>← tekrar sor</span><span>öğrendim →</span></div>` : ""}`
@@ -1023,28 +1118,29 @@ function renderCultureSidebar(){
   const el = document.getElementById("cultureNote");
   if(!el) return;
   if(culturalLoading){ el.innerHTML = `<p class="loading">Hazırlanıyor…</p>`; return; }
-  if(culturalNote){ el.innerHTML = `<p>${culturalNote}</p>`; return; }
+  if(culturalNote){ el.innerHTML = `<p>${esc(culturalNote)}</p>`; return; }
   el.innerHTML = `<p class="text-on-surface-variant/70">Kartı çevirince bu kelimeyle ilgili kısa bir not getireyim.</p>`;
 }
 function recentWordStreamHtml(){
-  const withHist = deck.filter(c => Array.isArray(c.history) && c.history.length);
+  const byId = new Map(deck.map(c => [c.id, c]));
   const todayKey = todayStr();
-  const items = withHist
-    .map(c => ({ c, t: Math.max(...c.history.map(h => h.t)) }))
-    .filter(x => todayStr(new Date(x.t)) === todayKey)
+  const latest = new Map();
+  loadActivity().forEach(x => { if(byId.has(x.id) && todayStr(new Date(x.t)) === todayKey) latest.set(x.id, x.t); });
+  const items = [...latest.entries()]
+    .map(([id, t]) => ({ c: byId.get(id), t }))
     .sort((a,b) => b.t - a.t)
     .slice(0,3);
   if(!items.length) return `<div class="empty" style="padding:18px;font-size:12.5px">Bugün henüz tekrar yapmadın.</div>`;
   return items.map(({c,t}) => `
     <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-lowest hover:bg-surface-bright transition-all shadow-xs">
       <div class="flex items-center gap-3 min-w-0">
-        <span class="font-headline-md text-headline-md font-semibold text-on-surface w-9 text-center shrink-0">${c.word.length <= 4 ? c.word : c.word.slice(0,2)+"…"}</span>
+        <span class="font-headline-md text-headline-md font-semibold text-on-surface w-9 text-center shrink-0">${esc(c.word.length <= 4 ? c.word : c.word.slice(0,2)+"…")}</span>
         <div class="flex flex-col min-w-0">
           <div class="flex items-center gap-1.5">
-            ${c.lang === "zh" && c.artikel ? `<span class="font-label-md text-label-md text-primary font-medium tracking-wide">${c.artikel}</span>` : ""}
-            <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">${c.pos}</span>
+            ${c.lang === "zh" && c.artikel ? `<span class="font-label-md text-label-md text-primary font-medium tracking-wide">${pinyinHtml(c.artikel, c.word)}</span>` : ""}
+            <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">${esc(c.pos)}</span>
           </div>
-          <span class="font-body-sm text-body-sm text-on-surface font-medium truncate">${c.tr}</span>
+          <span class="font-body-sm text-body-sm text-on-surface font-medium truncate">${esc(c.tr)}</span>
         </div>
       </div>
       <span class="font-label-sm text-label-sm text-on-surface-variant shrink-0">${Math.max(1,Math.round((Date.now()-t)/60000))} dk önce</span>
@@ -1063,6 +1159,7 @@ function learned(){
   card.due = Date.now() + 21 * DAY;
   toast(`${card.word} · 21 gün sonra`);
   store.update(card);
+  logActivity(card);
   recordStudyAction(wasNew, 15);
   roundIds?.delete(card.id);
   revealed = false; grading = false;
@@ -1076,6 +1173,7 @@ function grade(g){
   const when = g === 0 ? "1 dakika" : (card.interval < 1 ? "1 günden az" : card.interval + " gün");
   toast(`${card.word} · ${when} sonra`);
   store.update(card);
+  logActivity(card);
   recordStudyAction(wasNew, GRADE_POINTS[g] ?? 5);
   roundIds?.delete(card.id);
   revealed = false; grading = false;
@@ -1133,6 +1231,7 @@ function gradeLeech(g){
   schedule(card, g);
   if(g >= 2) card.lapses = Math.max(0, (card.lapses||0) - 1);
   store.update(card);
+  logActivity(card);
   leechQueue.shift();
   const graduated = (card.lapses||0) < LEECH_THRESHOLD;
   toast(graduated ? `${card.word} · artık zorlandıkların arasında değil 🎉` : `${card.word} · biraz daha pekişti`);
@@ -1274,17 +1373,17 @@ function deckCardHtml(w, idx){
     <div class="absolute left-0 top-0 bottom-0 w-1.5" style="background:${strip}"></div>
     <div class="p-space-lg pl-7 flex flex-col">
       <div class="flex items-center justify-between mb-space-md">
-        <span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm font-semibold tracking-wide" style="background:${strip}26;color:${strip}">${w.pos}${w.level?` • ${w.level}`:""}</span>
+        <span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm font-semibold tracking-wide" style="background:${strip}26;color:${strip}">${esc(w.pos)}${w.level?` • ${esc(w.level)}`:""}</span>
         <div class="flex items-center gap-1">
           <button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low transition-colors" data-speak="${w.id}" title="Sesli Oku"><span class="material-symbols-outlined text-[18px]">volume_up</span></button>
           <button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant/40 hover:text-error transition-colors" data-del="${w.id}" title="Sil"><span class="material-symbols-outlined text-[18px]">delete</span></button>
         </div>
       </div>
       <div class="mb-space-sm">
-        <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-wide group-hover:text-primary transition-colors">${w.word}</h2>
+        <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-wide group-hover:text-primary transition-colors">${esc(w.word)}</h2>
         <div class="flex items-center gap-2 mt-0.5">
-          ${w.artikel ? `<span class="font-label-md text-label-md tracking-wider font-medium" style="color:${strip}">${w.artikel}</span><span class="text-outline-variant/40">•</span>` : ""}
-          <span class="font-label-sm text-label-sm text-on-surface-variant/70">${w.tr}</span>
+          ${w.artikel ? `<span class="font-label-md text-label-md tracking-wider font-medium" style="color:${strip}">${w.lang === "zh" ? pinyinHtml(w.artikel, w.word) : esc(w.artikel)}</span><span class="text-outline-variant/40">•</span>` : ""}
+          <span class="font-label-sm text-label-sm text-on-surface-variant/70">${esc(w.tr)}</span>
         </div>
       </div>
       ${w.example ? `<div class="mt-space-sm p-space-sm bg-surface-container-low/50 rounded-lg">
@@ -1300,7 +1399,8 @@ function deckCardHtml(w, idx){
 function renderDeck(){
   const el = $("#deck");
   if(!deck.length){
-    el.innerHTML = `<div class="empty"><b>Defter boş</b>İlk kelimeni ekleyince kartlar burada birikir.</div>`;
+    el.innerHTML = `<div class="empty"><b>Defter boş</b>İlk kelimeni ekleyince kartlar burada birikir.
+      <div style="margin-top:16px"><button type="button" class="ghost" data-io="import">İçe aktar (CSV / Anki)</button></div></div>`;
     return;
   }
   const allFiltered = filterDeck();
@@ -1331,6 +1431,11 @@ function renderDeck(){
             </div>
             <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Kelime Defteri Kataloğu</h1>
             <p class="font-body-md text-body-md text-on-surface-variant max-w-xl mt-1">Toplam ${deck.length} editoryal kelime kartı. Telaffuz ve bağlam cümleleriyle bezeli kişisel kütüphanen.</p>
+            <div class="flex flex-wrap items-center gap-2 mt-space-sm">
+              <button type="button" data-io="csv" class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-colors" title="Tüm desteyi ilerleme bilgisiyle birlikte CSV olarak indir"><span class="material-symbols-outlined text-[16px]">download</span>CSV indir</button>
+              <button type="button" data-io="anki" class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-colors" title="Anki → Dosya → İçe Aktar ile açılabilen metin dosyası"><span class="material-symbols-outlined text-[16px]">style</span>Anki için indir</button>
+              <button type="button" data-io="import" class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-colors" title="CSV ya da Anki'den dışa aktarılmış .txt dosyası"><span class="material-symbols-outlined text-[16px]">upload</span>İçe aktar</button>
+            </div>
           </div>
           <div class="flex items-center gap-space-md bg-surface-container-low px-space-md py-space-sm rounded-xl shadow-sm self-start md:self-auto">
             <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">auto_stories</span></div>
@@ -1409,6 +1514,13 @@ function renderDeck(){
   if(nextBtn) nextBtn.onclick = () => { if(deckFilter.page<totalPages){ deckFilter.page++; renderDeck(); } };
 }
 $("#deck").addEventListener("click", async e => {
+  const io = e.target.closest("[data-io]");
+  if(io){
+    if(io.dataset.io === "csv") exportCsv();
+    else if(io.dataset.io === "anki") exportAnki();
+    else $("#importFile").click();
+    return;
+  }
   const spk = e.target.closest("[data-speak]");
   if(spk){
     const c = deck.find(x => x.id === spk.dataset.speak);
@@ -1424,6 +1536,136 @@ $("#deck").addEventListener("click", async e => {
     await store.remove(id);
     return;
   }
+});
+
+/* ---------- içe / dışa aktarma (CSV + Anki) ----------
+   CSV: tüm alanlar + aralıklı tekrar ilerlemesi; geri içe aktarınca kaldığın
+   yerden devam edersin. Excel Türkçe karakterleri doğru açsın diye BOM eklenir.
+   Anki: Anki → Dosya → İçe Aktar ile açılan sekmeyle ayrılmış metin (.txt).
+   İçe aktarma kendi CSV'mizi, sütun başlığı olmayan "kelime,anlam" CSV'lerini
+   ve Anki'nin "Notes in Plain Text" dışa aktarımını tanır. */
+const CSV_COLS = ["word","tr","pos","level","artikel","example","exampleTr","reps","ease","interval","due","lapses"];
+function downloadText(filename, text, mime){
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportStamp(){ return `kelime-defteri-${LANG}-${todayStr()}`; }
+function csvCell(v){
+  v = v == null ? "" : String(v);
+  return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+function exportCsv(){
+  const rows = deck.map(c => CSV_COLS.map(k => k === "due" ? new Date(c.due).toISOString() : c[k]));
+  const text = [CSV_COLS, ...rows].map(r => r.map(csvCell).join(",")).join("\r\n");
+  downloadText(`${exportStamp()}.csv`, "﻿" + text, "text/csv;charset=utf-8");
+  toast(`${deck.length} kart CSV olarak indirildi`);
+}
+function exportAnki(){
+  const cell = v => esc(v).replace(/\t/g, " ").replace(/\r?\n/g, "<br>");
+  const tag = v => String(v || "").trim().replace(/\s+/g, "_");
+  const lines = deck.map(c => {
+    const front = cell(c.word) + (c.artikel ? `<br><small>${cell(c.artikel)}</small>` : "");
+    const back = cell(c.tr) + (c.example ? `<br><br><i>${cell(c.example)}</i>` : "") + (c.exampleTr ? `<br>${cell(c.exampleTr)}` : "");
+    return [front, back, ["kelime-defteri", LANG, tag(c.pos), tag(c.level)].filter(Boolean).join(" ")].join("\t");
+  });
+  const head = ["#separator:tab", "#html:true", "#tags column:3", `#deck:Kelime Defteri::${LANG_NAMES[LANG]}`];
+  downloadText(`${exportStamp()}-anki.txt`, head.concat(lines).join("\n"), "text/plain;charset=utf-8");
+  toast(`${deck.length} kart Anki formatında indirildi`);
+}
+// Tırnaklı alanları, alan içi satır sonlarını ve "" kaçışını destekleyen CSV/TSV ayrıştırıcı.
+function parseDelimited(text, sep){
+  const rows = []; let row = [], field = "", q = false;
+  for(let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if(q){
+      if(ch === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else q = false; }
+      else field += ch;
+    }else if(ch === '"' && field === "") q = true;
+    else if(ch === sep){ row.push(field); field = ""; }
+    else if(ch === "\n" || ch === "\r"){
+      if(ch === "\r" && text[i+1] === "\n") i++;
+      row.push(field); rows.push(row); row = []; field = "";
+    }else field += ch;
+  }
+  if(field !== "" || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ""));
+}
+// DOMParser kullanılır: içe aktarılan dosyadaki <img onerror> gibi etiketler
+// ayrıştırılırken çalışmaz ya da yüklenmez (innerHTML'de çalışırdı).
+function htmlToText(s){
+  const html = String(s || "").replace(/<br\s*\/?>/gi, "\n");
+  return (new DOMParser().parseFromString(html, "text/html").body.textContent || "").trim();
+}
+function parseImportFile(text){
+  text = text.replace(/^﻿/, "");
+  const lines = text.split(/\r?\n/);
+  const meta = lines.filter(l => l.startsWith("#"));
+  const isAnki = meta.length > 0 || (lines[0] || "").split("\t").length > (lines[0] || "").split(",").length;
+  if(isAnki){
+    const sepLine = meta.find(l => /^#separator:/i.test(l));
+    const sepName = sepLine ? sepLine.split(":")[1].trim().toLowerCase() : "tab";
+    const sep = { tab:"\t", comma:",", semicolon:";", pipe:"|", space:" " }[sepName] || "\t";
+    const rows = parseDelimited(lines.filter(l => !l.startsWith("#")).join("\n"), sep);
+    return rows.map(r => {
+      const [frontWord, ...frontRest] = htmlToText(r[0]).split("\n");
+      const [tr, ...backRest] = htmlToText(r[1]).split("\n").filter(Boolean);
+      return { word: frontWord, tr, artikel: frontRest.join(" ").trim() || null, example: backRest[0] || "", exampleTr: backRest[1] || "" };
+    });
+  }
+  const sep = (lines[0] || "").includes(";") && !(lines[0] || "").includes(",") ? ";" : ",";
+  const rows = parseDelimited(text, sep);
+  if(!rows.length) return [];
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const known = { word:"word", kelime:"word", tr:"tr", anlam:"tr", "türkçe":"tr", pos:"pos", tür:"pos", level:"level", seviye:"level",
+                  artikel:"artikel", pinyin:"artikel", example:"example", "örnek":"example", exampletr:"exampleTr",
+                  reps:"reps", ease:"ease", interval:"interval", due:"due", lapses:"lapses" };
+  const hasHeader = header.some(h => known[h] === "word");
+  const cols = hasHeader ? header.map(h => known[h] || null) : ["word","tr","example","exampleTr"];
+  return (hasHeader ? rows.slice(1) : rows).map(r => {
+    const o = {};
+    cols.forEach((k, i) => { if(k && r[i] != null && r[i].trim() !== "") o[k] = r[i].trim(); });
+    return o;
+  });
+}
+function importedToCard(o){
+  const c = { word: o.word, tr: o.tr || "", pos: o.pos || "", level: o.level || "", artikel: o.artikel || null,
+              example: o.example || "", exampleTr: o.exampleTr || "" };
+  const num = v => (v === undefined || v === "" || !Number.isFinite(+v)) ? undefined : +v;
+  const srs = { reps: num(o.reps), ease: num(o.ease), interval: num(o.interval), lapses: num(o.lapses) };
+  Object.keys(srs).forEach(k => { if(srs[k] !== undefined) c[k] = srs[k]; });
+  const due = o.due ? Date.parse(o.due) : NaN;
+  if(Number.isFinite(due)) c.due = due;
+  return freshCard(c);
+}
+async function importFromFile(file){
+  let parsed;
+  try{ parsed = parseImportFile(await file.text()); }
+  catch(err){ alert("Dosya okunamadı: " + err.message); return; }
+  const existing = new Set(deck.map(d => d.word.toLowerCase()));
+  const cards = [];
+  let skipped = 0;
+  parsed.forEach(o => {
+    const k = (o.word || "").trim().toLowerCase();
+    if(!k){ return; }
+    if(existing.has(k)){ skipped++; return; }
+    existing.add(k); cards.push(importedToCard(o));
+  });
+  if(!cards.length){ toast(skipped ? `Dosyadaki ${skipped} kelimenin hepsi zaten destede` : "Dosyada içe aktarılacak kelime bulunamadı"); return; }
+  if(!confirm(`${cards.length} kelime ${LANG_NAMES[LANG]} destene eklenecek${skipped ? ` (${skipped} tanesi zaten destede, atlanacak)` : ""}. Devam edilsin mi?`)) return;
+  try{
+    const inserted = [];
+    for(let i = 0; i < cards.length; i += 200) inserted.push(...await store.insertMany(cards.slice(i, i + 200)));
+    deck = inserted.concat(deck);
+    renderDeck(); renderStats();
+    toast(`${inserted.length} kelime içe aktarıldı`);
+  }catch(err){ alert("İçe aktarılamadı: " + err.message); }
+}
+$("#importFile").addEventListener("change", e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if(f) importFromFile(f);
 });
 
 /* ---------- gruplar ----------
@@ -1580,12 +1822,18 @@ $("#genBtn").onclick = async () => {
   try{
     const topic = $("#topic").value.trim();
     const out = await ask(`${$("#level").value} seviyesinde, ${topic ? `"${topic}" konusuyla ilgili ` : ""}en sık kullanılan ${$("#howmany").value} ${LANG_NAMES[LANG]} kelime seç.
-Şu kelimeleri tekrar etme: ${deck.map(d=>d.word).join(", ") || "yok"}.
+Şu kelimeleri tekrar etme: ${deck.slice(0, 60).map(d=>d.word).join(", ") || "yok"}.
 Her kelime için mutlaka kısa bir örnek cümle ve Türkçesini de ver, boş bırakma.
 Sadece geçerli JSON dizisi döndür:
 [{"word":"${wordFieldHint()}","tr":"Türkçe karşılığı","pos":"isim|fiil|sıfat|zarf|edat|bağlaç|ünlem|kalıp","level":"${$("#level").value}","artikel":"${artikelFieldHint()}","example":"${exampleFieldHint()}","exampleTr":"örnek cümlenin Türkçesi"}]`);
     const existing = new Set(deck.map(d => d.word.toLowerCase()));
-    const fresh = out.filter(w => w.word && !existing.has(w.word.toLowerCase()));
+    // Prompt'a sadece desteden bir kesit gidiyor; tekrarları (hem destedeki hem
+    // aynı yanıt içindeki) burada eliyoruz.
+    const fresh = out.filter(w => {
+      const k = w.word && w.word.toLowerCase();
+      if(!k || existing.has(k)) return false;
+      existing.add(k); return true;
+    });
     const skipped = out.length - fresh.length;
     if(!fresh.length){ toast("Getirilen kelimeler zaten destede"); btn.disabled = false; btn.textContent = "En sık kullanılanları getir"; return; }
     deck = (await store.insertMany(fresh.map(freshCard))).concat(deck);
@@ -1626,15 +1874,15 @@ Sadece geçerli JSON dizisi döndür:
       <div class="phrase">
         <div>
           <div class="en">${p.phrase} ${p.freq ? `<span class="meta" style="color:${FREQ_COLOR[p.freq]||"var(--paper-dim)"};margin-left:6px">${p.freq}</span>` : ""}</div>
-          ${isZh && p.pinyin ? `<div class="pinyin-sub" style="font-size:12px">${p.pinyin}</div>` : ""}
+          ${isZh && p.pinyin ? `<div class="pinyin-sub" style="font-size:12px">${pinyinHtml(p.pinyin, p.phrase)}</div>` : ""}
           <div class="trx">${p.tr}</div>
           <div class="use">${p.use || ""}</div>
-          ${p.example ? `<div style="font-size:12px;margin-top:6px;line-height:1.5"><span style="color:var(--paper-dim)">${p.example}</span>${isZh && p.examplePinyin ? `<br><span class="pinyin-sub" style="font-size:11px">${p.examplePinyin}</span>` : ""}<br><span style="opacity:.6">${p.exampleTr||""}</span></div>` : ""}
+          ${p.example ? `<div style="font-size:12px;margin-top:6px;line-height:1.5"><span style="color:var(--paper-dim)">${p.example}</span>${isZh && p.examplePinyin ? `<br><span class="pinyin-sub" style="font-size:11px">${pinyinHtml(p.examplePinyin)}</span>` : ""}<br><span style="opacity:.6">${p.exampleTr||""}</span></div>` : ""}
         </div>
         <button class="ghost" data-add="${i}">+ Desteye</button>
       </div>`).join("");
     $("#phraseList").dataset.payload = JSON.stringify(out);
-  }catch(err){ $("#phraseList").innerHTML = `<p class="err">Kalıplar getirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#phraseList").innerHTML = `<p class="err">Kalıplar getirilemedi: ${esc(err.message)}</p>`; }
   btn.disabled = false; btn.textContent = "Getir";
 }
 $("#phrases").addEventListener("click", async e => {
@@ -1692,7 +1940,7 @@ function readingCardHtml(){
             <div class="flex items-center gap-3 min-w-0">
               <span class="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center font-label-sm text-label-sm font-bold text-primary shrink-0">${i+1}</span>
               <div class="flex flex-col min-w-0">
-                <div class="flex items-baseline gap-2"><span class="font-headline-sm text-headline-sm text-on-surface truncate">${w.word}</span>${w.pinyin?`<span class="font-label-sm text-label-sm text-on-surface-variant">${w.pinyin}</span>`:""}</div>
+                <div class="flex items-baseline gap-2"><span class="font-headline-sm text-headline-sm text-on-surface truncate">${w.word}</span>${w.pinyin?`<span class="font-label-sm text-label-sm text-on-surface-variant">${pinyinHtml(w.pinyin, w.word)}</span>`:""}</div>
                 <span class="font-body-sm text-body-sm text-on-surface font-medium truncate">${w.tr}</span>
               </div>
             </div>
@@ -1707,7 +1955,7 @@ function readingCardHtml(){
 
   if(isZh && Array.isArray(r.tokens) && r.tokens.length){
     const rubyHtml = r.tokens.map(t => t.py
-      ? `<ruby class="cursor-pointer hover:text-primary transition-colors inline-flex flex-col items-center" data-speak-word="${t.w}"><rt class="font-label-sm text-label-sm text-on-surface-variant select-none zh-rt">${t.py}</rt>${t.w}</ruby>`
+      ? `<ruby class="cursor-pointer hover:text-primary transition-colors inline-flex flex-col items-center" data-speak-word="${t.w}"><rt class="font-label-sm text-label-sm text-on-surface-variant select-none zh-rt">${pinyinHtml(t.py, t.w)}</rt>${t.w}</ruby>`
       : `<span class="text-on-surface-variant">${t.w}</span>`
     ).join("");
     return `
@@ -1750,7 +1998,7 @@ function readingCardHtml(){
               <div id="chengyuBox" class="bg-primary-fixed/30 p-space-md rounded-xl shadow-sm flex flex-col gap-2">
                 <div class="flex items-center gap-2 text-primary font-label-sm text-label-sm uppercase font-bold tracking-wider"><span class="material-symbols-outlined text-[16px]">auto_stories</span>Günün Deyimi (成语)</div>
                 <p class="font-body-sm text-body-sm text-on-surface-variant">${r.chengyu ? "" : "Hazırlanıyor…"}</p>
-                ${r.chengyu ? `<div class="flex items-baseline gap-2"><span class="font-headline-md text-headline-md text-on-surface font-semibold">${r.chengyu.hanzi}</span><span class="font-label-md text-label-md text-on-surface-variant italic">${r.chengyu.pinyin}</span></div><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed"><strong>Anlamı:</strong> ${r.chengyu.meaning}</p>` : ""}
+                ${r.chengyu ? `<div class="flex items-baseline gap-2"><span class="font-headline-md text-headline-md text-on-surface font-semibold">${r.chengyu.hanzi}</span><span class="font-label-md text-label-md text-on-surface-variant italic">${pinyinHtml(r.chengyu.pinyin)}</span></div><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed"><strong>Anlamı:</strong> ${r.chengyu.meaning}</p>` : ""}
               </div>
             </div>
           </div>
@@ -1831,7 +2079,7 @@ Sadece geçerli JSON döndür:
 {"title":"metnin başlığı","text":"paragraflara ayrılmış okuma metni (düz metin, tokens ile aynı içerik)",${isZh ? '"tokens":[{"w":"parça","py":"pinyin veya null"}],' : ''}"tr":"metnin tam Türkçe çevirisi, paragraflara ayrılmış","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}`);
     readingState = Object.assign({ level, topic, chengyu: null }, r);
     renderReading();
-  }catch(err){ $("#readingContent").innerHTML = `<p class="err">Metin getirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#readingContent").innerHTML = `<p class="err">Metin getirilemedi: ${esc(err.message)}</p>`; }
   btn.disabled = false; btn.textContent = "Metin getir";
 }
 $("#reading").addEventListener("click", async e => {
@@ -1898,7 +2146,7 @@ async function buildQuiz(scopeIds){
   }
   el.innerHTML = `<p class="loading">Sorular yazılıyor…</p>`;
   const pool = currentQuizScope ? words.slice() : words.slice().sort((a,b)=>a.due-b.due).slice(0,20);
-  const focus = pool.slice().sort(() => Math.random() - 0.5).slice(0,10).map(d=>d.word);
+  const focus = shuffled(pool).slice(0,10).map(d=>d.word);
   const isZh = (LANG === "zh");
   try{
     const qs = await ask(`Şu ${LANG_NAMES[LANG]} kelimelerle boşluk doldurma alıştırması hazırla: ${focus.join(", ")}.
@@ -1911,7 +2159,7 @@ Sadece geçerli JSON dizisi döndür:
     quizHistory = quizHistory.concat(qs.map(q=>q.sentence)).slice(-30);
     quizSession = { questions: qs, idx: 0, points: 0, streak: 0, maxStreak: 0, answers: new Array(qs.length).fill(null) };
     renderQuizQuestion();
-  }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${err.message}</p>`; }
+  }catch(err){ el.innerHTML = `<p class="err">Alıştırma üretilemedi: ${esc(err.message)}</p>`; }
 }
 
 function renderQuizQuestion(){
@@ -1922,7 +2170,7 @@ function renderQuizQuestion(){
   const isZh = (LANG === "zh");
   const done = s.answers[i] !== null;
   const pct = Math.round(((i + (done?1:0)) / s.questions.length) * 100);
-  const qPinyin = pyOrNull(q.pinyin) ? q.pinyin.replace("___","<b>_____</b>") : null;
+  const qPinyin = pyOrNull(q.pinyin) ? pinyinHtml(q.pinyin).replace("___","<b>_____</b>") : null;
   const trMap = {}; const pinyinMap = {};
   deck.forEach(c => { if(c.word) trMap[c.word.toLowerCase()] = c.tr; if(c.word && c.artikel) pinyinMap[c.word] = c.artikel; });
   const existingWords = new Set(deck.map(c => c.word.toLowerCase()));
@@ -1977,7 +2225,7 @@ function renderQuizQuestion(){
                 <div class="flex items-center gap-space-sm min-w-0">
                   <span class="w-8 h-8 rounded-full flex items-center justify-center font-label-md text-label-md font-bold shadow-sm shrink-0 ${done && idx===q.answer ? "bg-tertiary text-on-tertiary" : done && idx===s.answers[i] ? "bg-error text-on-error" : "bg-surface-container-high text-on-surface-variant"}">${letters[idx]}</span>
                   <div class="flex flex-col min-w-0">
-                    <span class="font-headline-sm text-headline-sm font-semibold truncate leading-snug">${o}${isZh && py ? `<span class="block font-label-sm text-label-sm font-normal opacity-80">${py}</span>` : ""}</span>
+                    <span class="font-headline-sm text-headline-sm font-semibold truncate leading-snug">${o}${isZh && py ? `<span class="block font-label-sm text-label-sm font-normal opacity-80">${pinyinHtml(py, o)}</span>` : ""}</span>
                     ${done && otr ? `<span class="font-body-sm text-body-sm truncate opacity-90">${otr}</span>` : ""}
                   </div>
                 </div>
@@ -2109,7 +2357,16 @@ function matchPool(){
   const words = deck.filter(c => c.pos !== "kalıp");
   return words.length >= 4 ? words : deck;
 }
-function shuffled(arr){ return arr.slice().sort(() => Math.random() - 0.5); }
+// Fisher–Yates: her sıralama eşit olasılıklı. sort(() => Math.random()-0.5) bazı
+// sıralamaları daha sık üretiyordu.
+function shuffled(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 function newMatchRound(){
   const words = matchPool();
   const n = Math.min(MATCH_SIZE, words.length);
@@ -2236,7 +2493,7 @@ async function startBigTest(){
     return;
   }
   el.innerHTML = `<p class="loading">Genel test hazırlanıyor (20 soru)…</p>`;
-  const focus = words.slice().sort(() => Math.random() - 0.5).slice(0, 20).map(d => d.word);
+  const focus = shuffled(words).slice(0, 20).map(d => d.word);
   const isZh = (LANG === "zh");
   try{
     const qs = await ask(`Şu ${LANG_NAMES[LANG]} kelime/kalıpların HEPSİNİ ayrı ayrı kapsayan boşluk doldurma soruları hazırla, destenin genelini test eden kapsamlı bir sınav olsun: ${focus.join(", ")}.
@@ -2247,7 +2504,7 @@ Sadece geçerli JSON dizisi döndür:
 [{"sentence":"cümle ___ içeren",${isZh ? '"pinyin":"cümle ___ pinyin okunuşu","optionPinyins":["","","",""],':''}"options":["","","",""],"optionTr":["","","",""],"answer":0,"tr":"cümlenin Türkçesi","words":[{"word":"kelime","tr":"Türkçe anlamı","pos":"isim|fiil|sıfat|zarf|kalıp"${isZh ? ',"pinyin":"pinyin"' : ''}}]}]`);
     bigTestState = { mode:"test", questions: qs.map(q => Object.assign({}, q)) };
     renderBigTest();
-  }catch(err){ el.innerHTML = `<p class="err">Test üretilemedi: ${err.message}</p>`; }
+  }catch(err){ el.innerHTML = `<p class="err">Test üretilemedi: ${esc(err.message)}</p>`; }
 }
 
 function startReview(){
@@ -2265,7 +2522,7 @@ function renderBigTest(){
   el.innerHTML = `
     <div class="toolbar"><div class="save-state">${answered}/${qs.length} cevaplandı · ${bigTestState.mode === "review" ? "yanlışları tekrar" : "genel test"}</div></div>
     ${qs.map((q,i) => {
-      const qPinyin = pyOrNull(q.pinyin) ? q.pinyin.replace("___","<b>_____</b>") : null;
+      const qPinyin = pyOrNull(q.pinyin) ? pinyinHtml(q.pinyin).replace("___","<b>_____</b>") : null;
       const done = q.userAnswer !== undefined;
       return `
       <div class="q" data-qi="${i}" ${done ? 'data-done="1"' : ""}>
@@ -2277,7 +2534,7 @@ function renderBigTest(){
           let cls = "opt";
           if(done && idx === q.answer) cls += " right";
           else if(done && idx === q.userAnswer) cls += " wrong";
-          return `<button class="${cls}">${o}${isZh && py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${py}</span>` : ""}${done && otr ? `<span class="opt-tr">${otr}</span>` : ""}</button>`;
+          return `<button class="${cls}">${o}${isZh && py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${pinyinHtml(py, o)}</span>` : ""}${done && otr ? `<span class="opt-tr">${otr}</span>` : ""}</button>`;
         }).join("")}</div>
         <div class="hint" ${done ? "" : "hidden"}>💡 ${q.tr}</div>
       </div>`;
@@ -2374,10 +2631,10 @@ Sadece geçerli JSON döndür:
       <div class="feedback" style="margin-top:10px">
         <div class="score">örnek</div>
         <div style="font-family:var(--display);font-size:18px;margin-bottom:6px">${r.sentence}</div>
-        ${isZh && r.pinyin ? `<div style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-bottom:6px">${r.pinyin}</div>` : ""}
+        ${isZh && r.pinyin ? `<div style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-bottom:6px">${pinyinHtml(r.pinyin)}</div>` : ""}
         <div style="opacity:.7">${r.tr}</div>
       </div>`;
-  }catch(err){ $("#suggestion").innerHTML = `<p class="err">Örnek getirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#suggestion").innerHTML = `<p class="err">Örnek getirilemedi: ${esc(err.message)}</p>`; }
   btn.disabled = false; btn.textContent = "Aklıma cümle gelmiyor";
 }
 async function check(){
@@ -2398,12 +2655,12 @@ Sadece geçerli JSON döndür:
       <div class="feedback ${good ? "" : "bad"}">
         <div class="score">puan ${r.score}/10 · kart ${good ? "ilerletildi" : "tekrara alındı"}</div>
         <div style="font-family:var(--display);font-size:19px;margin-bottom:8px">${r.corrected}</div>
-        ${isZh && r.pinyin ? `<div style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-bottom:8px">${r.pinyin}</div>` : ""}
+        ${isZh && r.pinyin ? `<div style="font-family:var(--mono);font-size:13px;color:var(--paper-dim);margin-bottom:8px">${pinyinHtml(r.pinyin)}</div>` : ""}
         <div>${r.feedback}</div>
       </div>
       <button class="ghost" style="margin-top:12px" id="nextBtn">Sıradaki kelime</button>`;
     $("#nextBtn").onclick = newPrompt;
-  }catch(err){ $("#fb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#fb").innerHTML = `<p class="err">Değerlendirilemedi: ${esc(err.message)}</p>`; }
 }
 
 /* ---------- dilbilgisi ---------- */
@@ -2453,7 +2710,7 @@ function microCardHtml(){
   const r = microState;
   const isZh = (LANG === "zh");
   const q = r.question;
-  const qPinyin = isZh && pyOrNull(q.pinyin) ? q.pinyin.replace("___","<b>_____</b>") : null;
+  const qPinyin = isZh && pyOrNull(q.pinyin) ? pinyinHtml(q.pinyin).replace("___","<b>_____</b>") : null;
   return `
     <div class="q">
       <div class="qtext"><b style="font-family:var(--display);font-size:19px;display:block;margin-bottom:8px;color:var(--saffron)">${r.title}</b>${r.explanation}</div>
@@ -2461,7 +2718,7 @@ function microCardHtml(){
       ${qPinyin ? `<div class="pinyin-sub" style="font-size:13px;margin-top:-6px;margin-bottom:12px">${qPinyin}</div>` : ""}
       <div class="opts">${q.options.map((o,idx) => {
         const py = isZh && pyOrNull(q.optionPinyins && q.optionPinyins[idx]);
-        return `<button class="opt">${o}${py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${py}</span>` : ""}</button>`;
+        return `<button class="opt">${o}${py ? `<span class="pinyin" style="display:block;font-size:11px;font-family:var(--mono);color:var(--paper-dim);margin-top:2px;font-weight:normal">${pinyinHtml(py, o)}</span>` : ""}</button>`;
       }).join("")}</div>
       <div class="hint" hidden>${q.tr}</div>
     </div>`;
@@ -2493,7 +2750,7 @@ Sadece geçerli JSON döndür:
 {"title":"konu başlığı (örn. 'Since vs For')","explanation":"2-3 cümlelik kısa Türkçe açıklama, örneklerle","question":{"sentence":"boşluklu örnek cümle, boşluk ___ ile gösterilsin",${isZh ? '"pinyin":"cümlenin pinyin okunuşu","optionPinyins":["","","",""],' : ''}"options":["","","",""],"answer":0,"tr":"cümlenin Türkçesi"}}`);
     microState = r;
     renderMicro();
-  }catch(err){ $("#microContent").innerHTML = `<p class="err">Mini ders getirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#microContent").innerHTML = `<p class="err">Mini ders getirilemedi: ${esc(err.message)}</p>`; }
   btn.disabled = false; btn.textContent = "Mini ders getir →";
 }
 
@@ -2554,7 +2811,7 @@ Sadece geçerli JSON döndür:
 {"pattern":"kalıbın kendisi","explanation":"kalıbın ne zaman/nasıl kullanıldığına dair kısa Türkçe açıklama","fillSentence":"kalıbı kullanan, bir kısmı ___ ile boşluk bırakılmış örnek cümle","fillAnswer":"boşluğa gelmesi gereken doğru ifade","fillTr":"boşluklu cümlenin Türkçesi"}`);
     patternState = r;
     renderPattern();
-  }catch(err){ $("#patternContent").innerHTML = `<p class="err">Kalıp getirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#patternContent").innerHTML = `<p class="err">Kalıp getirilemedi: ${esc(err.message)}</p>`; }
   btn.disabled = false; btn.textContent = "Kalıp getir →";
 }
 async function fetchPatternVariant(){
@@ -2583,7 +2840,7 @@ Sadece geçerli JSON döndür:
         <div style="font-family:var(--display);font-size:19px;margin-bottom:8px">${r.corrected}</div>
         <div>${r.feedback}</div>
       </div>`;
-  }catch(err){ $("#patternFb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#patternFb").innerHTML = `<p class="err">Değerlendirilemedi: ${esc(err.message)}</p>`; }
 }
 
 /* --- kelime + dilbilgisi --- */
@@ -2632,7 +2889,7 @@ Sadece geçerli JSON döndür:
 {"base":"kelimeyi içeren orijinal cümle","baseTr":"Türkçesi","task1":"1. görev, Türkçe kısa emir cümlesi (örn. 'Bu cümleyi edilgen yap')","task2":"2. görev, Türkçe kısa emir cümlesi"}`);
     vocabExState = Object.assign({word: w.word}, r);
     renderVocabEx();
-  }catch(err){ $("#vocabExContent").innerHTML = `<p class="err">Alıştırma getirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#vocabExContent").innerHTML = `<p class="err">Alıştırma getirilemedi: ${esc(err.message)}</p>`; }
   btn.disabled = false; btn.textContent = vocabExState ? "Başka kelime" : "Başla";
 }
 async function checkVocabEx(){
@@ -2657,7 +2914,7 @@ Sadece geçerli JSON döndür:
         <div style="font-family:var(--display);font-size:17px;margin-bottom:6px">${r.task2.corrected}</div>
         <div>${r.task2.feedback}</div>
       </div>`;
-  }catch(err){ $("#vocabFb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#vocabFb").innerHTML = `<p class="err">Değerlendirilemedi: ${esc(err.message)}</p>`; }
 }
 
 /* --- sınav modu --- */
@@ -2705,7 +2962,7 @@ Sadece geçerli JSON döndür:
 {"text":"hatalı metin","hint":"kaç hata olduğuna dair kısa Türkçe ipucu (örn. '3 hata var')"}`);
     examState = r;
     renderExam();
-  }catch(err){ $("#examContent").innerHTML = `<p class="err">Metin getirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#examContent").innerHTML = `<p class="err">Metin getirilemedi: ${esc(err.message)}</p>`; }
   btn.disabled = false; btn.textContent = "Yeni metin →";
 }
 async function checkExam(){
@@ -2724,11 +2981,156 @@ Sadece geçerli JSON döndür:
         <div style="font-family:var(--display);font-size:17px;margin-bottom:6px">${r.corrected}</div>
         <div>${r.feedback}</div>
       </div>`;
-  }catch(err){ $("#examFb").innerHTML = `<p class="err">Değerlendirilemedi: ${err.message}</p>`; }
+  }catch(err){ $("#examFb").innerHTML = `<p class="err">Değerlendirilemedi: ${esc(err.message)}</p>`; }
 }
 
 /* ---------- sekmeler ---------- */
-const ALL_TABS = ["study","leech","deck","groups","quiz","match","test","write","phrases","reading","grammar"];
+/* ---------- hanzi yazma pratiği ----------
+   hanzi-writer ile destedeki Çince kelimelerin karakterlerini çizgi sırasıyla
+   izleme (animasyon) ve kendin yazma (quiz) modu. Kütüphane ve karakter verisi
+   sadece bu sekme ilk açıldığında CDN'den yüklenir. */
+const HANZI_WRITER_SRC = "https://cdn.jsdelivr.net/npm/hanzi-writer@3.7/dist/hanzi-writer.min.js";
+let hanziLib = null, hanziWriter = null;
+let hanziState = { cardId: null, charIdx: 0, outline: true, result: null };
+function loadHanziWriter(){
+  if(window.HanziWriter) return Promise.resolve(window.HanziWriter);
+  if(hanziLib) return hanziLib;
+  hanziLib = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = HANZI_WRITER_SRC; s.async = true;
+    s.onload = () => resolve(window.HanziWriter);
+    s.onerror = () => { hanziLib = null; reject(new Error("hanzi-writer yüklenemedi, internet bağlantını kontrol et")); };
+    document.head.appendChild(s);
+  });
+  return hanziLib;
+}
+const hanziChars = c => (c.word || "").match(CJK_RE) || [];
+const hanziPool = () => deck.filter(c => hanziChars(c).length);
+function pickHanziCard(excludeId){
+  const pool = hanziPool();
+  if(!pool.length) return null;
+  // önce tekrarı gelmiş kartlar, yoksa rastgele
+  const due = shuffled(pool.filter(c => c.due <= Date.now() && c.id !== excludeId));
+  const rest = shuffled(pool.filter(c => c.id !== excludeId));
+  return due[0] || rest[0] || pool[0];
+}
+function hanziColors(){
+  const dark = theme === "dark";
+  return {
+    strokeColor: dark ? "#f3ece2" : "#2b2230",
+    radicalColor: "#d4883b",
+    outlineColor: dark ? "#4a4150" : "#e3dbe6",
+    drawingColor: dark ? "#7ea6ff" : "#3567d6",
+    highlightColor: "#2f9e5b",
+  };
+}
+function renderHanzi(){
+  const el = $("#hanzi");
+  if(LANG !== "zh"){
+    el.innerHTML = `<div class="empty"><b>Bu mod Çince için</b>Üstteki dil seçiminden <strong>ZH</strong>'ye geçince destedeki Çince kelimelerin karakterlerini çizgi sırasıyla yazmayı çalışabilirsin.</div>`;
+    return;
+  }
+  let card = deck.find(c => c.id === hanziState.cardId && hanziChars(c).length);
+  if(!card){ card = pickHanziCard(); hanziState = { cardId: card?.id || null, charIdx: 0, outline: true, result: null }; }
+  if(!card){
+    el.innerHTML = `<div class="empty"><b>Çince kelime yok</b>Yazma pratiği için önce destene Hanzi içeren birkaç kelime ekle.</div>`;
+    return;
+  }
+  const chars = hanziChars(card);
+  hanziState.charIdx = Math.min(hanziState.charIdx, chars.length - 1);
+  const ch = chars[hanziState.charIdx];
+  const res = hanziState.result;
+  el.innerHTML = `
+    <div class="max-w-3xl mx-auto flex flex-col gap-space-lg">
+      <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-wrap items-center justify-between gap-space-md">
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5 font-label-md text-label-md uppercase tracking-widest text-primary mb-1">
+            <span class="material-symbols-outlined text-[16px]">draw</span><span>Hanzi Yazma Pratiği</span>
+          </div>
+          <div class="flex items-baseline gap-3 flex-wrap">
+            <span class="font-headline-lg text-headline-lg text-on-surface">${esc(card.word)}</span>
+            ${card.artikel ? `<span class="font-label-md text-label-md" style="font-family:var(--mono)">${pinyinHtml(card.artikel, card.word)}</span>` : ""}
+          </div>
+          <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">${esc(card.tr)}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="ghost" id="hzSpeak" title="Seslendir"><span class="material-symbols-outlined text-[18px] align-middle">volume_up</span></button>
+          <button type="button" class="ghost" id="hzNextCard">Başka kelime</button>
+        </div>
+      </div>
+      ${chars.length > 1 ? `
+      <div class="flex items-center justify-center gap-2 flex-wrap" id="hzChars">
+        ${chars.map((c, i) => `<button type="button" data-hz-char="${i}" class="w-12 h-12 rounded-lg text-[22px] ${i === hanziState.charIdx ? "bg-primary text-on-primary shadow-sm" : "bg-surface-container-low text-on-surface"}">${esc(c)}</button>`).join("")}
+      </div>` : ""}
+      <div class="flex flex-col items-center gap-space-md">
+        <div class="relative bg-surface-container-lowest rounded-2xl shadow-sm" style="width:280px;height:280px">
+          <svg class="absolute inset-0 pointer-events-none" width="280" height="280" aria-hidden="true">
+            <g stroke="currentColor" class="text-outline-variant" stroke-opacity=".35" stroke-dasharray="4 5">
+              <line x1="0" y1="0" x2="280" y2="280"/><line x1="280" y1="0" x2="0" y2="280"/>
+              <line x1="140" y1="0" x2="140" y2="280"/><line x1="0" y1="140" x2="280" y2="140"/>
+            </g>
+          </svg>
+          <div id="hzTarget" class="relative" style="width:280px;height:280px"></div>
+        </div>
+        <div id="hzMsg" class="font-body-sm text-body-sm text-on-surface-variant text-center min-h-[1.5em]">${
+          res ? (res.mistakes === 0 ? `<span class="text-tertiary font-semibold">Mükemmel! Hiç hata yapmadın 🎉</span>` : `<span>Tamamlandı · ${res.mistakes} hata</span>`)
+              : `<span class="loading">Karakter yükleniyor…</span>`}</div>
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <button type="button" class="ghost" id="hzAnimate"><span class="material-symbols-outlined text-[18px] align-middle">play_arrow</span> Çizgi sırasını izle</button>
+          <button type="button" id="hzQuiz"><span class="material-symbols-outlined text-[18px] align-middle">edit</span> Kendin yaz</button>
+          <button type="button" class="ghost" id="hzOutline">${hanziState.outline ? "Silik izi gizle" : "Silik izi göster"}</button>
+          ${chars.length > 1 && hanziState.charIdx < chars.length - 1 ? `<button type="button" class="ghost" id="hzNextChar">Sonraki karakter →</button>` : ""}
+        </div>
+        <p class="font-label-sm text-label-sm text-on-surface-variant/70 text-center max-w-md">"Kendin yaz"da çizgileri doğru sırayla çiz; 3 kez yanlış çizersen doğru çizgi ipucu olarak yanıp söner.</p>
+      </div>
+    </div>`;
+
+  $("#hzSpeak").onclick = () => speak(card.word);
+  $("#hzNextCard").onclick = () => {
+    const next = pickHanziCard(card.id);
+    hanziState = { cardId: next?.id || null, charIdx: 0, outline: hanziState.outline, result: null };
+    renderHanzi();
+  };
+  el.querySelectorAll("[data-hz-char]").forEach(b => b.onclick = () => { hanziState.charIdx = +b.dataset.hzChar; hanziState.result = null; renderHanzi(); });
+  const nextChar = $("#hzNextChar");
+  if(nextChar) nextChar.onclick = () => { hanziState.charIdx++; hanziState.result = null; renderHanzi(); };
+
+  loadHanziWriter().then(HW => {
+    if($("#hanzi").hidden || !document.getElementById("hzTarget")) return;
+    $("#hzTarget").innerHTML = "";
+    hanziWriter = HW.create("hzTarget", ch, {
+      width: 280, height: 280, padding: 18,
+      showOutline: hanziState.outline, showCharacter: false,
+      strokeAnimationSpeed: 1.1, delayBetweenStrokes: 220,
+      showHintAfterMisses: 3, ...hanziColors(),
+      onLoadCharDataSuccess: () => { if(!hanziState.result) $("#hzMsg").innerHTML = `<span>Çizgi sırasını izle ya da kendin yaz.</span>`; },
+      onLoadCharDataError: () => { $("#hzMsg").innerHTML = `<span class="err">"${esc(ch)}" karakterinin çizgi verisi bulunamadı.</span>`; },
+    });
+    if(hanziState.result) hanziWriter.showCharacter();
+    $("#hzAnimate").onclick = () => { hanziState.result = null; hanziWriter.hideCharacter(); hanziWriter.animateCharacter(); };
+    $("#hzQuiz").onclick = () => {
+      hanziState.result = null;
+      $("#hzMsg").innerHTML = `<span>Çiz! İlk çizgiden başla.</span>`;
+      hanziWriter.quiz({
+        onMistake: d => { $("#hzMsg").innerHTML = `<span>${d.strokeNum + 1}. çizgi yanlış · toplam ${d.totalMistakes} hata</span>`; },
+        onCorrectStroke: d => { $("#hzMsg").innerHTML = `<span>${d.strokeNum + 1}/${d.strokeNum + 1 + d.strokesRemaining} çizgi</span>`; },
+        onComplete: d => {
+          hanziState.result = { mistakes: d.totalMistakes };
+          $("#hzMsg").innerHTML = d.totalMistakes === 0
+            ? `<span class="text-tertiary font-semibold">Mükemmel! Hiç hata yapmadın 🎉</span>`
+            : `<span>Tamamlandı · ${d.totalMistakes} hata. Bir daha dene ya da sonraki karaktere geç.</span>`;
+        },
+      });
+    };
+    $("#hzOutline").onclick = () => {
+      hanziState.outline = !hanziState.outline;
+      hanziState.outline ? hanziWriter.showOutline() : hanziWriter.hideOutline();
+      $("#hzOutline").textContent = hanziState.outline ? "Silik izi gizle" : "Silik izi göster";
+    };
+  }).catch(err => { $("#hzMsg").innerHTML = `<span class="err">${esc(err.message)}</span>`; });
+}
+
+const ALL_TABS = ["study","leech","deck","groups","quiz","match","test","write","phrases","reading","hanzi","grammar"];
 function renderTab(tab){
   exitGroupMode(); // sol menüden doğrudan bir sekmeye tıklamak grup bağlamından çıkarır
   if(tab === "study"){ revealed = false; grading = false; resetStudyRound(); renderStudy(); }
@@ -2741,6 +3143,7 @@ function renderTab(tab){
   if(tab === "write") newPrompt();
   if(tab === "phrases") renderPhrases();
   if(tab === "reading") renderReading();
+  if(tab === "hanzi") renderHanzi();
   if(tab === "grammar") renderGrammar();
 }
 function showTab(tab){
@@ -2908,7 +3311,7 @@ $("#mailBtn").onclick = async () => {
   btn.disabled = true; btn.textContent = "…";
   const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
   $("#mailMsg").innerHTML = error
-    ? `<p class="err">${error.message}</p>`
+    ? `<p class="err">${esc(error.message)}</p>`
     : `<div class="sent">Link gönderildi. Mailini aç ve linke tıkla.</div>`;
   btn.disabled = false; btn.textContent = "Link gönder";
 };
@@ -2920,7 +3323,7 @@ async function pwSignup(){
   if(password.length < 6){ $("#pwMsg").innerHTML = `<p class="err">Şifre en az 6 karakter olmalı</p>`; return; }
   const btn = $("#pwSignupBtn"); btn.disabled = true; btn.textContent = "…";
   const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
-  if(error){ $("#pwMsg").innerHTML = `<p class="err">${error.message}</p>`; }
+  if(error){ $("#pwMsg").innerHTML = `<p class="err">${esc(error.message)}</p>`; }
   else if(!data.session){ $("#pwMsg").innerHTML = `<div class="sent">Kayıt oluştu. Mailine gelen linke tıklayıp hesabını onayla.</div>`; }
   else{ $("#pwMsg").innerHTML = `<div class="sent">Kayıt oluştu, giriş yapılıyor…</div>`; }
   btn.disabled = false; btn.textContent = "Kayıt ol";
@@ -2930,7 +3333,7 @@ async function pwLogin(){
   if(!email || !password){ $("#pwMsg").innerHTML = `<p class="err">Mail ve şifre gerekli</p>`; return; }
   const btn = $("#pwLoginBtn"); btn.disabled = true; btn.textContent = "…";
   const { error } = await sb.auth.signInWithPassword({ email, password });
-  if(error) $("#pwMsg").innerHTML = `<p class="err">${error.message === "Invalid login credentials" ? "Mail veya şifre yanlış" : error.message}</p>`;
+  if(error) $("#pwMsg").innerHTML = `<p class="err">${error.message === "Invalid login credentials" ? "Mail veya şifre yanlış" : esc(error.message)}</p>`;
   btn.disabled = false; btn.textContent = "Giriş yap";
 }
 $("#pwSignupBtn").onclick = pwSignup;
@@ -2944,9 +3347,22 @@ async function offerMigration(){
   const mine = local.read();
   if(!mine.length) return;
   if(!confirm(`Misafirken eklediğin ${mine.length} kelime var. Hesabına aktarılsın mı?`)) return;
-  const { error } = await sb.from("cards").insert(mine.map(toRow));
-  if(error){ alert("Aktarılamadı: " + error.message); return; }
+  // Hesapta zaten olan kelimeleri (aynı dilde) tekrar ekleme
+  const { data: cloud, error: readErr } = await sb.from("cards").select("word,lang");
+  if(readErr){ alert("Aktarılamadı: " + readErr.message); return; }
+  const have = new Set((cloud || []).map(r => `${r.lang}:${(r.word || "").toLowerCase()}`));
+  const fresh = mine.filter(c => {
+    const k = `${c.lang || LANG}:${(c.word || "").toLowerCase()}`;
+    if(have.has(k)) return false;
+    have.add(k); return true;
+  });
+  if(fresh.length){
+    const { error } = await sb.from("cards").insert(fresh.map(toRow));
+    if(error){ alert("Aktarılamadı: " + error.message); return; }
+  }
   localStorage.removeItem(LOCAL_KEY);
+  const dup = mine.length - fresh.length;
+  toast(`${fresh.length} kelime aktarıldı` + (dup ? ` · ${dup} tanesi hesabında zaten vardı` : ""));
 }
 
 sb.auth.onAuthStateChange(async (event, session) => {

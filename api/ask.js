@@ -1,9 +1,8 @@
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+import { guard } from "./_guard.js";
 
-  if (req.method === "OPTIONS") return res.status(200).end();
+const MAX_PROMPT_CHARS = 12000;
+
+export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Sadece POST isteği kabul edilir" });
 
   const key = process.env.EACHLABS_API_KEY;
@@ -19,7 +18,10 @@ export default async function handler(req, res) {
   }
 
   const prompt = body?.prompt;
-  if (!prompt) return res.status(400).json({ error: "Prompt parametresi eksik" });
+  if (!prompt || typeof prompt !== "string") return res.status(400).json({ error: "Prompt parametresi eksik" });
+  if (prompt.length > MAX_PROMPT_CHARS) return res.status(413).json({ error: "İstek çok uzun" });
+
+  if (!(await guard(req, res))) return;
 
   try {
     const createRes = await fetch("https://api.eachlabs.ai/v1/prediction/", {
